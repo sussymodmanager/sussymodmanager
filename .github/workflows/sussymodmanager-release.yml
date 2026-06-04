@@ -105,11 +105,31 @@ jobs:
             (cd dist && zip -r "../${ZIP}" "SussyModManager-${RID}")
           fi
 
+      - name: Build Windows installer (Inno Setup)
+        if: matrix.rid == 'win-x64'
+        shell: bash
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -e
+          choco install innosetup -y --no-progress
+          ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+          # Double slash so MSYS/Git-Bash doesn't mangle the /D define flag into a path.
+          "$ISCC" "//DMyAppVersion=${VERSION}" packaging/windows/SussyModManager.iss
+          ls -la installer
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: SussyModManager-${{ matrix.rid }}
           path: SussyModManager-${{ matrix.rid }}.zip
+
+      - name: Upload installer artifact
+        if: matrix.rid == 'win-x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SussyModManager-Setup-x64
+          path: installer/SussyModManager-Setup-x64.exe
 
   release:
     name: Publish GitHub Release
@@ -125,5 +145,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*.zip
+          files: |
+            artifacts/**/*.zip
+            artifacts/**/*.exe
           generate_release_notes: true

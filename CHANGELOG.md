@@ -18,8 +18,8 @@ First public release of SUSSYMODMANAGER — a modern, cross-platform Among Us mo
 - Live mod-store updates pulled from the repo `data/` folder — no app release needed.
 - Danger Zone: convert to vanilla (keep downloads) or full wipe, both with confirmation.
 - Crash logging with rotation to the app data folder, plus global exception handlers.
-- App icon and proper platform packaging: Windows `.ico`, macOS `.app` + `.icns`, Linux
-  `.desktop` + icon + `run.sh`.
+- App icon and proper platform packaging: a per-user Windows `Setup.exe` installer (Inno Setup),
+  macOS `.app` + `.icns`, and Linux `.desktop` + icon + `run.sh`.
 
 ### Changed
 - Version is now driven by the git tag (CI `-p:Version`) and read from the assembly at runtime;

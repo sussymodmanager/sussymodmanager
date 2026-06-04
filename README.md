@@ -32,7 +32,9 @@ profiles. The sussiest mod manager alive.
 Grab the latest build for your OS from the
 **[Releases page](https://github.com/sussymodmanager/sussymodmanager/releases/latest)**:
 
-- **Windows** — `SussyModManager-win-x64.zip` (or `win-arm64`). Unzip the folder and run
+- **Windows (easiest)** — `SussyModManager-Setup-x64.exe`. Run it; it installs per-user (no admin),
+  adds a Start Menu shortcut, and registers a proper uninstaller. Auto-updates keep working.
+- **Windows (portable)** — `SussyModManager-win-x64.zip` (or `win-arm64`). Unzip the folder and run
   `SussyModManager.exe` inside it.
 - **macOS** — `SussyModManager-osx-arm64.zip` (Apple Silicon) or `osx-x64` (Intel). Unzip and move
   `SussyModManager.app` to Applications. Gatekeeper may block it (unsigned) — **right-click → Open**.
