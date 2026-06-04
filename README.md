@@ -12,8 +12,8 @@ profiles. The sussiest mod manager alive.
 
 - **Cross-platform** — native desktop app on Windows, macOS and Linux (built on .NET 8 + Avalonia).
 - **One-click SUS AF PACK** — installs Town of Us Mira + its Roles Extension, Draft Mode, AUnlocker,
-  Outfit Presets, AleLuduMod (15+ players with fixed Transporter/meeting menus), Vanilla
-  Enhancements and Better CrewLink in the correct dependency order.
+  AleLuduMod (15+ players with fixed Transporter/meeting menus), Vanilla Enhancements and Better
+  CrewLink in the correct dependency order.
 - **GitHub + Thunderstore** — installs mods from GitHub releases and the Thunderstore Among Us
   community (e.g. Cosmella's Outfit Presets and TabsBuilderApi).
 - **Color profiles** — pick from built-in themes (Sus Default, Impostor Red, Crew Blue, Skeld
