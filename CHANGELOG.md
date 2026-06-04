@@ -33,3 +33,5 @@ First public release of SUSSYMODMANAGER — a modern, cross-platform Among Us mo
   an outdated build is found.
 - Updater never serves a wrong-architecture build; it falls back to the releases page when no
   matching asset exists.
+- Release builds are no longer published as a self-extracting single-file binary, which commonly
+  triggered Windows Defender false positives; each release is now a plain self-contained folder.

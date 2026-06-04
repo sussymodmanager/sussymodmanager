@@ -53,12 +53,16 @@ jobs:
       - name: Publish
         shell: bash
         run: |
+          # NOTE: intentionally NOT using PublishSingleFile. A self-extracting single-file .NET
+          # binary is a common Windows Defender false-positive trigger (Wacatac et al.). A plain
+          # self-contained folder is far less likely to be flagged.
           dotnet publish src/SussyModManager/SussyModManager.csproj \
             -c Release \
             -r ${{ matrix.rid }} \
             --self-contained true \
-            -p:PublishSingleFile=true \
-            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:PublishSingleFile=false \
+            -p:DebugType=none \
+            -p:DebugSymbols=false \
             -p:Version=${{ steps.ver.outputs.version }} \
             -o publish/${{ matrix.rid }}
 
@@ -72,8 +76,12 @@ jobs:
           ZIP="SussyModManager-${RID}.zip"
 
           if [ "${{ runner.os }}" = "Windows" ]; then
-            # Windows: zip the publish output as-is (exe + data + sus.ico bundled by Avalonia).
-            (cd publish/${RID} && 7z a "../../${ZIP}" .)
+            # Windows: wrap the self-contained folder in a named directory so users get one tidy
+            # folder (run SussyModManager.exe inside it) instead of ~150 loose files.
+            OUT="dist/SussyModManager-${RID}"
+            mkdir -p "${OUT}"
+            cp -R publish/${RID}/. "${OUT}/"
+            (cd dist && 7z a "../${ZIP}" "SussyModManager-${RID}")
 
           elif [ "${{ runner.os }}" = "macOS" ]; then
             # macOS: assemble a proper .app bundle.

@@ -32,12 +32,28 @@ profiles. The sussiest mod manager alive.
 Grab the latest build for your OS from the
 **[Releases page](https://github.com/sussymodmanager/sussymodmanager/releases/latest)**:
 
-- **Windows** — `SussyModManager-win-x64.zip` (or `win-arm64`). Unzip and run `SussyModManager.exe`.
-  SmartScreen may warn on first run (unsigned) — click **More info → Run anyway**.
+- **Windows** — `SussyModManager-win-x64.zip` (or `win-arm64`). Unzip the folder and run
+  `SussyModManager.exe` inside it.
 - **macOS** — `SussyModManager-osx-arm64.zip` (Apple Silicon) or `osx-x64` (Intel). Unzip and move
   `SussyModManager.app` to Applications. Gatekeeper may block it (unsigned) — **right-click → Open**.
 - **Linux** — `SussyModManager-linux-x64.zip` (or `linux-arm64`). Unzip and run `./run.sh` (or the
   `SussyModManager` binary). A `.desktop` file + icon are included.
+
+### "Windows protected your PC" / Defender warning
+
+The builds are **not code-signed**, so Windows SmartScreen and Microsoft Defender may warn the first
+time you download or run the app. It is safe — the full source is in this repo. To get past it:
+
+1. **If the browser blocks the download:** click the **···** next to the download → **Keep** →
+   **Keep anyway**.
+2. **Unblock the zip:** right-click the downloaded `.zip` → **Properties** → tick **Unblock** →
+   **OK**, then extract.
+3. **If SmartScreen appears on launch:** click **More info → Run anyway**.
+4. **If Defender quarantines the exe (false positive):** open **Windows Security → Virus & threat
+   protection → Protection history**, find the item, and choose **Allow**.
+
+These warnings fade as the app builds download reputation, and disappear entirely once releases are
+code-signed (planned).
 
 ## Architecture
 
