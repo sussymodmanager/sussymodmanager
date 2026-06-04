@@ -1,0 +1,121 @@
+name: SUSSYMODMANAGER Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: windows-latest
+            rid: win-arm64
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: ubuntu-latest
+            rid: linux-arm64
+          - os: macos-latest
+            rid: osx-x64
+          - os: macos-latest
+            rid: osx-arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          REF="${GITHUB_REF#refs/tags/}"
+          if [[ "$REF" == v* ]]; then
+            echo "version=${REF#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=1.0.0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish
+        shell: bash
+        run: |
+          dotnet publish src/SussyModManager/SussyModManager.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:Version=${{ steps.ver.outputs.version }} \
+            -o publish/${{ matrix.rid }}
+
+      - name: Package (zip)
+        shell: bash
+        env:
+          RID: ${{ matrix.rid }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -e
+          ZIP="SussyModManager-${RID}.zip"
+
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            # Windows: zip the publish output as-is (exe + data + sus.ico bundled by Avalonia).
+            (cd publish/${RID} && 7z a "../../${ZIP}" .)
+
+          elif [ "${{ runner.os }}" = "macOS" ]; then
+            # macOS: assemble a proper .app bundle.
+            APP="dist/SussyModManager.app"
+            mkdir -p "${APP}/Contents/MacOS" "${APP}/Contents/Resources"
+            cp -R publish/${RID}/. "${APP}/Contents/MacOS/"
+            cp src/SussyModManager/Assets/sus.icns "${APP}/Contents/Resources/sus.icns"
+            sed "s/__VERSION__/${VERSION}/g" packaging/macos/Info.plist > "${APP}/Contents/Info.plist"
+            chmod +x "${APP}/Contents/MacOS/SussyModManager"
+            (cd dist && zip -r -y "../${ZIP}" "SussyModManager.app")
+
+          else
+            # Linux: binary + launcher + .desktop + icon in a single folder.
+            OUT="dist/SussyModManager-${RID}"
+            mkdir -p "${OUT}"
+            cp -R publish/${RID}/. "${OUT}/"
+            cp packaging/linux/run.sh "${OUT}/run.sh"
+            cp packaging/linux/sussymodmanager.desktop "${OUT}/sussymodmanager.desktop"
+            cp src/SussyModManager/Assets/sus-256.png "${OUT}/sussymodmanager.png"
+            chmod +x "${OUT}/SussyModManager" "${OUT}/run.sh"
+            (cd dist && zip -r "../${ZIP}" "SussyModManager-${RID}")
+          fi
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SussyModManager-${{ matrix.rid }}
+          path: SussyModManager-${{ matrix.rid }}.zip
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.zip
+          generate_release_notes: true

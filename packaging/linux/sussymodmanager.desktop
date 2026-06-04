@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=SUSSYMODMANAGER
+GenericName=Among Us Mod Manager
+Comment=The sussiest mod manager alive
+Exec=SussyModManager
+Icon=sussymodmanager
+Terminal=false
+Categories=Game;Utility;
+StartupNotify=true

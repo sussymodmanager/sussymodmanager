@@ -1,0 +1,121 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SussyModManager.ViewModels"
+        x:Class="SussyModManager.Views.WizardWindow"
+        x:DataType="vm:WizardViewModel"
+        Width="640" Height="560"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BackgroundBrush}"
+        Icon="/Assets/sus.ico"
+        Title="Welcome to SUSSYMODMANAGER">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="28,24,28,20">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="14" Margin="0,0,0,18">
+            <Border Width="56" Height="56" CornerRadius="16" ClipToBounds="True">
+                <Image Source="/Assets/sus.png" Width="56" Height="56" />
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="SUSSYMODMANAGER" Classes="h1" />
+                <TextBlock Text="Let's get you set up in a few clicks." Classes="muted" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Body -->
+        <Border Grid.Row="1" Classes="card" Padding="24" ClipToBounds="True">
+            <Panel>
+
+                <!-- Step 0: Welcome -->
+                <StackPanel Spacing="14" IsVisible="{Binding IsWelcome}">
+                    <TextBlock Text="Welcome, crewmate" Classes="h2" />
+                    <TextBlock Classes="muted" TextWrapping="Wrap"
+                               Text="SUSSYMODMANAGER installs and manages Among Us mods across Windows, macOS and Linux. We'll point it at your game, pick a look, and optionally drop in the SUS AF PACK." />
+                    <TextBlock Classes="muted" TextWrapping="Wrap"
+                               Text="You can change everything later in Settings." />
+                </StackPanel>
+
+                <!-- Step 1: Path -->
+                <StackPanel Spacing="12" IsVisible="{Binding IsPathStep}">
+                    <TextBlock Text="Where is Among Us?" Classes="h2" />
+                    <TextBlock Classes="muted" TextWrapping="Wrap"
+                               Text="Pick the folder that contains the Among Us executable. We can try to find it automatically." />
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBox Grid.Column="0" Text="{Binding AmongUsPath}"
+                                 Watermark="Path to your Among Us install folder" />
+                        <Button Grid.Column="1" Classes="ghost" Content="Browse" Margin="8,0,0,0" Click="OnBrowse" />
+                        <Button Grid.Column="2" Classes="ghost" Content="Detect" Margin="8,0,0,0"
+                                Command="{Binding DetectCommand}" />
+                    </Grid>
+                    <TextBlock Text="{Binding PathStatus}" Classes="muted" TextWrapping="Wrap"
+                               IsVisible="{Binding PathStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+
+                <!-- Step 2: Theme -->
+                <Grid RowDefinitions="Auto,Auto,*" IsVisible="{Binding IsThemeStep}">
+                    <TextBlock Grid.Row="0" Text="Pick your vibe" Classes="h2" />
+                    <TextBlock Grid.Row="1" Margin="0,6,0,0" Classes="muted"
+                               Text="Tap a profile to preview it live. Pink and green included." />
+                    <ScrollViewer Grid.Row="2" Margin="0,12,0,0" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Profiles}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:ColorProfileViewModel">
+                                    <Button Classes="ghost" Margin="0,0,12,12" Padding="12"
+                                            Command="{Binding $parent[ItemsControl].((vm:WizardViewModel)DataContext).ApplyProfileCommand}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Spacing="8" Width="150">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <Border Width="26" Height="26" CornerRadius="6" Background="{Binding AccentSwatch}" />
+                                                <Border Width="26" Height="26" CornerRadius="6" Background="{Binding SecondarySwatch}" />
+                                                <Border Width="26" Height="26" CornerRadius="6" Background="{Binding SurfaceSwatch}" />
+                                                <Border Width="26" Height="26" CornerRadius="6" Background="{Binding BackgroundSwatch}" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                <TextBlock Text="●" Foreground="{DynamicResource SuccessBrush}"
+                                                           IsVisible="{Binding IsActive}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Step 3: Pack -->
+                <StackPanel Spacing="14" IsVisible="{Binding IsPackStep}">
+                    <TextBlock Text="One-click the meta" Classes="h2" />
+                    <TextBlock Classes="muted" TextWrapping="Wrap"
+                               Text="The SUS AF PACK bundles Town of Us Mira, role extensions and the essentials, with all dependencies handled for you." />
+                    <CheckBox Content="Install the SUS AF PACK now"
+                              IsChecked="{Binding InstallPack}"
+                              Foreground="{DynamicResource TextPrimaryBrush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsBusy}">
+                        <TextBlock Text="⏳" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding BusyStatus}" Classes="muted" VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+
+            </Panel>
+        </Border>
+
+        <!-- Footer -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,18,0,0">
+            <Button Grid.Column="0" Classes="ghost" Content="Skip setup"
+                    Command="{Binding SkipCommand}" IsEnabled="{Binding !IsBusy}" />
+            <Button Grid.Column="2" Classes="ghost" Content="Back" Margin="0,0,8,0"
+                    IsVisible="{Binding BackVisible}"
+                    Command="{Binding BackCommand}" IsEnabled="{Binding !IsBusy}" />
+            <Button Grid.Column="3" Classes="accent" Content="{Binding NextLabel}"
+                    Command="{Binding NextCommand}" IsEnabled="{Binding !IsBusy}" />
+        </Grid>
+    </Grid>
+</Window>

@@ -1,0 +1,32 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:SussyModManager"
+             x:Class="SussyModManager.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.DataTemplates>
+        <local:ViewLocator />
+    </Application.DataTemplates>
+
+    <Application.Resources>
+        <!-- Color tokens. Overwritten at runtime by ThemeService from the active color profile. -->
+        <SolidColorBrush x:Key="AccentBrush" Color="#8B5CF6" />
+        <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#EC4899" />
+        <SolidColorBrush x:Key="BackgroundBrush" Color="#0F0E17" />
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#1A1825" />
+        <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#252233" />
+        <SolidColorBrush x:Key="CardBorderBrush" Color="#332F45" />
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F5F3FF" />
+        <SolidColorBrush x:Key="TextMutedBrush" Color="#9A93B8" />
+        <SolidColorBrush x:Key="SuccessBrush" Color="#34D399" />
+        <SolidColorBrush x:Key="WarningBrush" Color="#FBBF24" />
+        <SolidColorBrush x:Key="DangerBrush" Color="#F87171" />
+        <SolidColorBrush x:Key="GlowBrush" Color="#668B5CF6" />
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://SussyModManager/Themes/Controls.axaml" />
+    </Application.Styles>
+
+</Application>

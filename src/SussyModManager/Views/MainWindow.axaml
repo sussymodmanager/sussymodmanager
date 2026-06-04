@@ -1,0 +1,108 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SussyModManager.ViewModels"
+        x:Class="SussyModManager.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="1180" Height="760"
+        MinWidth="940" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BackgroundBrush}"
+        Icon="/Assets/sus.ico"
+        Title="SUSSYMODMANAGER">
+
+    <Grid ColumnDefinitions="248,*">
+
+        <!-- Sidebar -->
+        <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,1,0">
+            <Grid RowDefinitions="Auto,*,Auto" Margin="16,22,16,18">
+
+                <StackPanel Grid.Row="0" Spacing="2" Margin="6,0,0,24">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border Width="38" Height="38" CornerRadius="11" ClipToBounds="True">
+                            <Image Source="/Assets/sus.png" Width="38" Height="38" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="SUSSY" FontSize="16" FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock Text="MOD MANAGER" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AccentBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock Text="{Binding AppTagline}" Classes="muted" FontSize="11" Margin="0,8,0,0" />
+                    <TextBlock Text="{Binding AppVersion}" Classes="muted" FontSize="10" Margin="0,2,0,0" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Spacing="6">
+                    <RadioButton Classes="nav" GroupName="nav" IsChecked="True"
+                                 Command="{Binding NavigateCommand}" CommandParameter="store">
+                        <TextBlock Text="🛒  Mod Store" />
+                    </RadioButton>
+                    <RadioButton Classes="nav" GroupName="nav"
+                                 Command="{Binding NavigateCommand}" CommandParameter="installed">
+                        <TextBlock Text="📦  Installed" />
+                    </RadioButton>
+                    <RadioButton Classes="nav" GroupName="nav"
+                                 Command="{Binding NavigateCommand}" CommandParameter="presets">
+                        <TextBlock Text="✨  Presets" />
+                    </RadioButton>
+                    <RadioButton Classes="nav" GroupName="nav"
+                                 Command="{Binding NavigateCommand}" CommandParameter="settings">
+                        <TextBlock Text="⚙️  Settings" />
+                    </RadioButton>
+                </StackPanel>
+
+                <StackPanel Grid.Row="2" Spacing="12">
+                    <Button Classes="success" Content="▶  PLAY"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                            Command="{Binding Installed.PlayCommand}"
+                            IsEnabled="{Binding !Installed.IsBusy}" />
+                    <Border Classes="card" Padding="12">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="SUS AF PACK" FontWeight="Bold" FontSize="12"
+                                       Foreground="{DynamicResource AccentBrush}" />
+                            <TextBlock Text="One-click the meta loadout in Presets."
+                                       Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main content -->
+        <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+
+            <Border Grid.Row="0" IsVisible="{Binding UpdateAvailable}"
+                    Background="{DynamicResource AccentBrush}" Padding="20,10">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                    <TextBlock Grid.Column="0" Text="🚀" FontSize="15" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Margin="10,0,0,0" Foreground="White" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Text="{Binding UpdateText}" />
+                    <Button Grid.Column="2" Content="Restart &amp; update" Margin="0,0,8,0"
+                            IsVisible="{Binding UpdateStaged}"
+                            Command="{Binding DownloadUpdateCommand}" />
+                    <Button Grid.Column="2" Content="Download" Margin="0,0,8,0"
+                            IsVisible="{Binding !UpdateStaged}"
+                            Command="{Binding DownloadUpdateCommand}" />
+                    <Button Grid.Column="3" Classes="ghost" Content="✕"
+                            Command="{Binding DismissUpdateCommand}" />
+                </Grid>
+            </Border>
+
+            <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" Margin="0" />
+
+            <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0"
+                    Padding="20,9">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Ellipse Width="9" Height="9" Fill="{DynamicResource SuccessBrush}"
+                             VerticalAlignment="Center" IsVisible="{Binding !StatusIsError}" />
+                    <Ellipse Width="9" Height="9" Fill="{DynamicResource DangerBrush}"
+                             VerticalAlignment="Center" IsVisible="{Binding StatusIsError}" />
+                    <TextBlock Text="{Binding StatusText}" Classes="muted"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

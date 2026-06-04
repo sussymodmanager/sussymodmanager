@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SussyModManager.ViewModels"
+             xmlns:views="clr-namespace:SussyModManager.Views"
+             x:Class="SussyModManager.Views.InstalledView"
+             x:DataType="vm:InstalledViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,*" Margin="28,24,28,16">
+
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0" Spacing="2">
+                <TextBlock Text="{Binding Title}" Classes="h1" />
+                <TextBlock Text="{Binding Subtitle}" Classes="muted" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                <Button Classes="ghost" Content="Launch Vanilla" Command="{Binding PlayVanillaCommand}" />
+                <Button Classes="success" Content="▶  PLAY" Command="{Binding PlayCommand}"
+                        IsEnabled="{Binding !IsBusy}" />
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="1" Spacing="6" Margin="0,16,0,12">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button Classes="ghost" Content="Select all" Command="{Binding SelectAllCommand}" />
+                <Button Classes="ghost" Content="Clear" Command="{Binding ClearSelectionCommand}" />
+                <Rectangle Width="1" Fill="{DynamicResource CardBorderBrush}" Margin="4,2" />
+                <Button Classes="ghost" Content="Check for updates" Command="{Binding CheckUpdatesCommand}"
+                        IsEnabled="{Binding !IsBusy}" />
+                <Button Classes="ghost" Content="Update all" Command="{Binding UpdateAllCommand}"
+                        IsEnabled="{Binding !IsBusy}" />
+            </StackPanel>
+            <ProgressBar IsIndeterminate="True" Height="3" IsVisible="{Binding IsBusy}"
+                         Foreground="{DynamicResource AccentBrush}" />
+        </StackPanel>
+
+        <Panel Grid.Row="2">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Installed}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:ModCardViewModel">
+                            <views:ModCardView />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <StackPanel IsVisible="{Binding HasNoMods}" HorizontalAlignment="Center"
+                        VerticalAlignment="Center" Spacing="12">
+                <TextBlock Text="No mods installed yet" Classes="h2" HorizontalAlignment="Center" />
+                <TextBlock Text="Head to the Mod Store or grab the SUS AF PACK in Presets."
+                           Classes="muted" HorizontalAlignment="Center" />
+                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                    <Button Classes="accent" Content="Browse Mod Store" Command="{Binding GoToStoreCommand}" />
+                    <Button Classes="ghost" Content="See Presets" Command="{Binding GoToPresetsCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </Panel>
+    </Grid>
+</UserControl>

@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <RootNamespace>SussyModManager</RootNamespace>
+    <AssemblyName>SussyModManager</AssemblyName>
+    <ApplicationIcon>Assets\sus.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
+    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.2.3" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SussyModManager.Core\SussyModManager.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Embed only the icons the running app needs; the large .icns is shipped via CI for the
+         macOS bundle, not embedded into every platform's binary. -->
+    <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Remove="Assets\sus.icns" />
+  </ItemGroup>
+
+  <!-- Bundle data files (registry, cache, presets, color profiles) next to the executable. -->
+  <ItemGroup>
+    <Content Include="..\..\data\mod-registry.json" Link="data\mod-registry.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\data\mod-cache.json" Link="data\mod-cache.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\data\builtin-presets.json" Link="data\builtin-presets.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\data\color-profiles.json" Link="data\color-profiles.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

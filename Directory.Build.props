@@ -1,0 +1,17 @@
+<Project>
+
+  <!--
+    Shared metadata + version for all SUSSYMODMANAGER projects.
+    Version is the single source of truth: CI overrides it from the git tag
+    (dotnet ... -p:Version=1.2.3), and AppInfo.Version reads it back at runtime.
+  -->
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Product>SUSSYMODMANAGER</Product>
+    <Company>SUSSYMODMANAGER</Company>
+    <Authors>SUSSYMODMANAGER</Authors>
+    <Copyright>Copyright (c) SUSSYMODMANAGER contributors. GPLv3.</Copyright>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,1154 @@
+
+{
+  "version": "1.1",
+  "mods": [
+    {
+      "id": "TOHE",
+      "name": "Town of Host Enhanced",
+      "author": "EnhancedNetwork",
+      "description": "A host-only modpack for Among Us with enhanced features",
+      "githubOwner": "EnhancedNetwork",
+      "githubRepo": "TownofHost-Enhanced",
+      "category": "Host Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": ["SteamItchio", "steamitchio"],
+          "exclude": ["epic", "Epic"]
+        },
+        "epic": {
+          "patterns": ["EpicMsStore", "epicmsstore", "epicms"],
+          "exclude": []
+        },
+        "dll": {
+          "patterns": ["TOHE.dll", ".dll"],
+          "exclude": ["steam", "epic", "Steam", "Epic"]
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": ["TownOfUs", "TheOtherRoles", "LasMonjas", "AllTheRoles", "LaunchpadReloaded"],
+      "featured": true
+    },
+    {
+      "id": "TOHO",
+      "name": "Town of Host Optimized",
+      "author": "Limeau",
+      "description": "TOHO is a Host-Only among us mod with hundreds of new roles, multiple Game Modes, and many game optimizations!",
+      "githubOwner": "Limeau",
+      "githubRepo": "TownofHost-Optimized",
+      "category": "Host Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "TownOfUs",
+      "name": "Town of Us Mira",
+      "author": "AU-Avengers",
+      "description": "Town of Us Reactivated, but cleaner using MiraAPI with many improvements!",
+      "githubOwner": "AU-Avengers",
+      "githubRepo": "TOU-Mira",
+      "category": "Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": ["steam-itch"],
+          "exclude": []
+        },
+        "epic": {
+          "patterns": ["epic-msstore"],
+          "exclude": []
+        },
+        "dll": {
+          "patterns": ["MiraAPI.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "MiraAPI",
+          "name": "MiraAPI",
+          "fileName": "MiraAPI.dll",
+          "githubOwner": "All-Of-Us-Mods",
+          "githubRepo": "MiraAPI",
+          "requiredVersion": null,
+          "optional": false
+        }
+      ],
+      "packageType": "nested",
+      "incompatibilities": ["TOHE", "TheOtherRoles", "LasMonjas", "AllTheRoles", "LaunchpadReloaded"],
+      "featured": true
+    },
+    {
+      "id": "ChaosTokens",
+      "name": "ChaosTokens",
+      "author": "xChipseq",
+      "description": "Addon for ToUM that adds chaos! The mod adds Town Of Salem 2 inspired Chaos Tokens to Town of Us Mira",
+      "githubOwner": "xChipseq",
+      "githubRepo": "ChaosTokens",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["ChaosTokens.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "TownOfUs",
+          "name": "Town of Us Mira",
+          "fileName": "TownOfUsMira.dll",
+          "githubOwner": "AU-Avengers",
+          "githubRepo": "TOU-Mira",
+          "requiredVersion": null,
+          "optional": false
+        },
+        {
+          "modId": "MiraAPI",
+          "name": "MiraAPI",
+          "fileName": "MiraAPI.dll",
+          "githubOwner": "All-Of-Us-Mods",
+          "githubRepo": "MiraAPI",
+          "requiredVersion": null,
+          "optional": false
+        }
+      ],
+      "incompatibilities": []
+    },
+    {
+      "id": "BetterCrewLink",
+      "name": "Better CrewLink",
+      "author": "OhMyGuus",
+      "description": "Voice proximity chat for Among Us",
+      "githubOwner": "OhMyGuus",
+      "githubRepo": "BetterCrewLink",
+      "category": "Utility",
+      "assetFilters": {
+        "default": {
+          "patterns": [".zip"],
+          "exclude": ["source"]
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": [],
+      "featured": true,
+      "executableName": "Better-CrewLink.exe"
+    },
+    {
+      "id": "Better-BCL",
+      "name": "Better-BCL",
+      "author": "rewalo",
+      "description": "A fork of Better CrewLink with some extra features",
+      "githubOwner": "rewalo",
+      "githubRepo": "BetterCrewLink",
+      "category": "Utility",
+      "assetFilters": {
+        "default": {
+          "patterns": [".zip"],
+          "exclude": ["source"]
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": [],
+      "featured": true,
+      "executableName": "Better-CrewLink.exe"
+    },
+    {
+      "id": "TheOtherRoles",
+      "name": "The Other Roles",
+      "author": "TheOtherRolesAU",
+      "description": "A mod for Among Us which adds many new roles, new Settings and new Custom Hats to the game",
+      "githubOwner": "TheOtherRolesAU",
+      "githubRepo": "TheOtherRoles",
+      "category": "Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": ["theotherroles.zip"],
+          "exclude": [],
+          "exactMatch": true
+        },
+        "epic": {
+          "patterns": ["theotherroles_msstore.zip"],
+          "exclude": [],
+          "exactMatch": true
+        },
+        "dll": {
+          "patterns": ["theotherroles.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": true,
+      "depotConfig": {
+        "depotId": 945361,
+        "manifestId": "5207443046106116882",
+        "gameVersion": "v15.11.0"
+      },
+      "dependencies": [
+        {
+          "modId": "Reactor",
+          "name": "Reactor",
+          "fileName": "Reactor.dll",
+          "githubOwner": "NuclearPowered",
+          "githubRepo": "Reactor",
+          "requiredVersion": "<=2.4.0",
+          "optional": false
+        }
+      ],
+      "incompatibilities": ["AllTheRoles", "TownOfUs", "LasMonjas", "TOHE", "LaunchpadReloaded", "StellarRolesAU"]
+    },
+    {
+      "id": "AllTheRoles",
+      "name": "All The Roles",
+      "author": "Zeo666",
+      "description": "A mod for Among Us which adds many new roles, modifiers, game modes, map settings, hats and more",
+      "githubOwner": "Zeo666",
+      "githubRepo": "AllTheRoles",
+      "category": "Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": ["x86-steam-itch", "steam-itch"],
+          "exclude": []
+        },
+        "epic": {
+          "patterns": ["x64-epic-msstore", "epic-msstore"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": true,
+      "depotConfig": {
+        "depotId": 945361,
+        "manifestId": "1110308242604365209",
+        "gameVersion": "v16.0.5"
+      },
+      "incompatibilities": ["TheOtherRoles", "TownOfUs", "LasMonjas", "TOHE", "LaunchpadReloaded", "StellarRolesAU"]
+    },
+    {
+      "id": "LaunchpadReloaded",
+      "name": "Launchpad: Reloaded",
+      "author": "All-Of-Us-Mods",
+      "description": "A vanilla oriented fun and unique Among Us client mod",
+      "githubOwner": "All-Of-Us-Mods",
+      "githubRepo": "LaunchpadReloaded",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "Reactor",
+          "name": "Reactor",
+          "fileName": "Reactor.dll",
+          "githubOwner": "NuclearPowered",
+          "githubRepo": "Reactor",
+          "requiredVersion": ">=2.5.0",
+          "optional": false
+        },
+        {
+          "modId": "MiraAPI",
+          "name": "MiraAPI",
+          "fileName": "MiraAPI.dll",
+          "githubOwner": "All-Of-Us-Mods",
+          "githubRepo": "MiraAPI",
+          "requiredVersion": null,
+          "optional": false
+        }
+      ],
+      "incompatibilities": ["TOHE", "TownOfUs", "LasMonjas", "TheOtherRoles", "AllTheRoles", "StellarRolesAU"]
+    },
+    {
+      "id": "Reactor",
+      "name": "Reactor",
+      "author": "NuclearPowered",
+      "description": "Shared modding framework required by multiple mods. Version conflicts will be detected automatically.",
+      "githubOwner": "NuclearPowered",
+      "githubRepo": "Reactor",
+      "category": "Dependency",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["Reactor.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "MiraAPI",
+      "name": "Mira API",
+      "author": "All-Of-Us-Mods",
+      "description": "Core API used by Mira-based mods.",
+      "githubOwner": "All-Of-Us-Mods",
+      "githubRepo": "MiraAPI",
+      "category": "Dependency",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["MiraAPI.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "Submerged",
+      "name": "Submerged",
+      "author": "SubmergedAmongUs",
+      "description": "A mod for Among Us which adds a new map into the game.",
+      "githubOwner": "SubmergedAmongUs",
+      "githubRepo": "Submerged",
+      "category": "Map",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["Submerged.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "Reactor",
+          "name": "Reactor",
+          "fileName": "Reactor.dll",
+          "githubOwner": "NuclearPowered",
+          "githubRepo": "Reactor",
+          "requiredVersion": ">=2.5.0",
+          "optional": false
+        }
+      ],
+      "versionDependencies": {
+        "2025.11.20": [
+          {
+            "modId": "Reactor",
+            "requiredVersion": ">=2.5.0"
+          }
+        ],
+		"2025.1.30": [
+          {
+            "modId": "Reactor",
+            "requiredVersion": ">=2.3.1"
+          }
+        ],
+        "2024.8.26": [
+          {
+            "modId": "Reactor",
+            "requiredVersion": ">=2.3.1"
+          }
+        ]
+      },
+      "incompatibilities": []
+    },
+    {
+      "id": "StellarRolesAU",
+      "name": "StellarRoles",
+      "author": "Mr-Fluuff",
+      "description": "A mod for Among Us which adds new Roles & Modifiers, new Settings and new Custom Cosmetics to the game.",
+      "githubOwner": "Mr-Fluuff",
+      "githubRepo": "StellarRolesAU",
+      "category": "Mod",
+      "assetFilters": {
+        "default": {
+          "patterns": [".zip"],
+          "exclude": ["source"]
+        }
+      },
+      "requiresDepot": true,
+      "depotConfig": {
+        "depotId": 945361,
+        "manifestId": "8040785713895232554",
+        "gameVersion": "v16.0.2"
+      },
+      "dependencies": [
+        {
+          "modId": "Reactor",
+          "name": "Reactor",
+          "fileName": "Reactor.dll",
+          "githubOwner": "NuclearPowered",
+          "githubRepo": "Reactor",
+          "requiredVersion": "2.4.0",
+          "optional": false
+        }
+      ],
+      "incompatibilities": ["TOHE", "TownOfUs", "LasMonjas", "TheOtherRoles", "AllTheRoles", "LaunchpadReloaded"]
+    },
+    {
+      "id": "TheOtherRolesGMIA",
+      "name": "The Other Roles GM IA",
+      "author": "dabao40",
+      "description": "A mod for Among Us which adds many new roles, new Settings and new Custom Hats to the game (GM IA version)",
+      "githubOwner": "dabao40",
+      "githubRepo": "TheOtherRolesGMIA",
+      "category": "Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": [".zip"],
+          "exclude": ["source", "epic"]
+        },
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": true,
+      "depotConfig": {
+        "depotId": 945361,
+        "manifestId": "8040785713895232554",
+        "gameVersion": "v16.0.2"
+      },
+      "dependencies": [
+        {
+          "modId": "Reactor",
+          "name": "Reactor",
+          "fileName": "Reactor.dll",
+          "githubOwner": "NuclearPowered",
+          "githubRepo": "Reactor",
+          "requiredVersion": "2.4.0",
+          "optional": false
+        }
+      ],
+      "incompatibilities": ["TheOtherRoles", "LasMonjas", "TownOfUs", "TOHE", "AllTheRoles", "StellarRolesAU", "LaunchpadReloaded"],
+      "featured": true
+    },
+    {
+      "id": "LasMonjas",
+      "name": "Las Monjas",
+      "author": "KiraYamato94",
+      "description": "A mod for Among Us which adds new roles and features to the game",
+      "githubOwner": "KiraYamato94",
+      "githubRepo": "LasMonjas",
+      "category": "Mod",
+      "assetFilters": {
+        "epic": {
+          "patterns": ["epic", "epic-msstore"],
+          "exclude": []
+        },
+        "steam": {
+          "patterns": [".zip"],
+          "exclude": ["source", "epic"]
+        },
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "packageType": "nested",
+      "incompatibilities": ["TheOtherRoles", "TheOtherRolesGMIA", "TownOfUs", "TOHE", "AllTheRoles", "StellarRolesAU", "LaunchpadReloaded"]
+    },
+    {
+      "id": "SmolMod",
+      "name": "SmolMod",
+      "author": "XtraCube",
+      "description": "An Among Us Mod that makes players the size of pets!",
+      "githubOwner": "XtraCube",
+      "githubRepo": "SmolMod",
+      "category": "Fun",
+      "assetFilters": {
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "LotusContinued",
+      "name": "Project Lotus: Continued",
+      "author": "Lotus-AU",
+      "description": "Unique, beautiful, and customizable host mod. Adds cosmetics, commands and hotkeys, and various options.",
+      "githubOwner": "Lotus-AU",
+      "githubRepo": "LotusContinued",
+      "category": "Host Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": [".zip"],
+          "exclude": ["epic", "msstore", "microsoft", "Epic", "MS"]
+        },
+        "epic": {
+          "patterns": ["epic", "epic-msstore", "epicmsstore", "Epic", "MS"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "PropHunt",
+      "name": "PropHunt",
+      "author": "ugackMiner53",
+      "description": "A mod for Among Us which extends Hide and Seek into a new mode, Prop Hunt!",
+      "githubOwner": "ugackMiner53",
+      "githubRepo": "PropHunt",
+      "category": "Fun",
+      "assetFilters": {
+        "steam": {
+          "patterns": [".zip"],
+          "exclude": ["source", "epic"]
+        },
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "LevelImposter",
+      "name": "Level Imposter",
+      "author": "DigiWorm0",
+      "description": "Custom Among Us Mapping Studio",
+      "githubOwner": "DigiWorm0",
+      "githubRepo": "LevelImposter",
+      "category": "Map",
+      "assetFilters": {
+        "steam": {
+          "patterns": [".zip"],
+          "exclude": ["source", "epic"]
+        },
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "keepFiles": ["plugins/LevelImposter"],
+      "incompatibilities": []
+    },
+    {
+      "id": "yanplaRoles",
+      "name": "yanplaRoles",
+      "author": "yanpla",
+      "description": "A mod that introduces new roles and modifiers.",
+      "githubOwner": "yanpla",
+      "githubRepo": "yanplaRoles",
+      "category": "Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": [".zip"],
+          "exclude": ["source", "epic"]
+        },
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "NewMod",
+      "name": "NewMod",
+      "author": "CallOfCreator",
+      "description": "A  mod for Among Us that introduces a variety of new roles, unique abilities, and custom game modes, offering players exciting new ways to enjoy the game.",
+      "githubOwner": "CallOfCreator",
+      "githubRepo": "NewMod",
+      "category": "Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": [".zip"],
+          "exclude": ["source", "epic", "ms", "microsoft", "NewMod-MS", "MS"]
+        },
+        "epic": {
+          "patterns": ["NewMod-MS", "epic", "epic-msstore", "MS"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "AUnlocker",
+      "name": "AUnlocker",
+      "author": "astra1dev",
+      "description": "A mod that unlocks additional content and features in Among Us.",
+      "githubOwner": "astra1dev",
+      "githubRepo": "AUnlocker",
+      "category": "Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": ["Steam_Itch"],
+          "exclude": ["Epic", "Microsoft", "Xbox", "EpicGames"]
+        },
+        "epic": {
+          "patterns": ["EpicGames_MicrosoftStore_XboxApp", "epic", "epic-msstore"],
+          "exclude": []
+        },
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "EndlessHostRoles",
+      "name": "Endless Host Roles",
+      "author": "Gurge44",
+      "description": "The largest Among Us mod.",
+      "githubOwner": "Gurge44",
+      "githubRepo": "EndlessHostRoles",
+      "category": "Host Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": ["_Steam"],
+          "exclude": ["Epic", "Microsoft", "Epic-Games"]
+        },
+        "epic": {
+          "patterns": ["Epic-Games_Microsoft-Store", "epic", "epic-msstore"],
+          "exclude": []
+        },
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": [],
+      "featured": true
+    },
+    {
+      "id": "CursedAmongUs",
+      "name": "Cursed Among Us",
+      "author": "Devs-Us",
+      "description": "A mod for Among Us that introduces challenging modifications to gameplay.",
+      "githubOwner": "Devs-Us",
+      "githubRepo": "Cursed-Among-Us",
+      "category": "Fun",
+      "assetFilters": {
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "Reactor",
+          "name": "Reactor",
+          "fileName": "Reactor.dll",
+          "githubOwner": "NuclearPowered",
+          "githubRepo": "Reactor",
+          "requiredVersion": ">=2.5.0",
+          "optional": false
+        }
+      ],
+      "incompatibilities": []
+    },
+    {
+      "id": "CrowdedMod",
+      "name": "CrowdedMod",
+      "author": "CrowdedMods",
+      "description": "CrowdedMod unlocks the possibility for more than 15 players to join in an Among Us lobby.",
+      "githubOwner": "CrowdedMods",
+      "githubRepo": "CrowdedMod",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "Reactor",
+          "name": "Reactor",
+          "fileName": "Reactor.dll",
+          "githubOwner": "NuclearPowered",
+          "githubRepo": "Reactor",
+          "requiredVersion": null,
+          "optional": false
+        }
+      ],
+      "versionDependencies": {
+        "v2.3.1": [
+          {
+            "modId": "Reactor",
+            "requiredVersion": ">=2.3.1"
+          }
+        ]
+      },
+      "incompatibilities": []
+    },
+    {
+      "id": "UnlockDleks",
+      "name": "Unlock dleks ehT",
+      "author": "Tommy-XL",
+      "description": "Mod for Among Us that allows you to play on \"dleks ehT\" (mirrored Skeld)",
+      "githubOwner": "Tommy-XL",
+      "githubRepo": "Unlock-dlekS-ehT",
+      "category": "Map",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["UnlockDleks.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "MinimumLevel",
+      "name": "Minimum Level",
+      "author": "AtomicTyler1",
+      "description": "This mod will automatically kick/ban anyone who doesn't fall in range of whatever config you set (Must be host!!).",
+      "githubOwner": "AtomicTyler1",
+      "githubRepo": "MinimumLevel",
+      "category": "Host Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["MinimumLevel.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "MoreGamemodes",
+      "name": "More Gamemodes",
+      "author": "Rabek009",
+      "description": "An Among Us host-only mod that adds new gamemodes and roles.",
+      "githubOwner": "Rabek009",
+      "githubRepo": "MoreGamemodes",
+      "category": "Host Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": ["More-Gamemodes-SteamItchio", "SteamItchio"],
+          "exclude": ["Epic", "epic", "Msstore", "msstore"]
+        },
+        "epic": {
+          "patterns": ["More-Gamemodes-EpicMsstore", "EpicMsstore"],
+          "exclude": ["Steam", "steam", "Itchio", "itchio"]
+        },
+        "dll": {
+          "patterns": ["MoreGamemodes.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "Impostor",
+      "name": "Impostor",
+      "author": "Impostor",
+      "description": "Impostor is the first working Among Us private server, written in C#.",
+      "githubOwner": "Impostor",
+      "githubRepo": "Impostor",
+      "category": "Utility",
+      "assetFilters": {
+        "default": {
+          "patterns": ["win-x64.zip"],
+          "exclude": ["linux", "osx", "arm", "arm64", "nupkg", "snupkg", "source", "Source"]
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "VanillaEnhancements",
+      "name": "Vanilla Enhancements",
+      "author": "xChipseq",
+      "description": "An among us mod adding lots of quality-of-life features to the game.",
+      "githubOwner": "xChipseq",
+      "githubRepo": "VanillaEnhancements",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["VanillaEnhancements.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "Reactor",
+          "name": "Reactor",
+          "fileName": "Reactor.dll",
+          "githubOwner": "NuclearPowered",
+          "githubRepo": "Reactor",
+          "requiredVersion": null,
+          "optional": false
+        }
+      ],
+      "incompatibilities": []
+    },
+    {
+      "id": "ModExplorer",
+      "name": "Mod Explorer",
+      "author": "xChipseq",
+      "description": "Mod Explorer adds an in-game list of all mods installed, in case you ever forget what you are playing with",
+      "githubOwner": "xChipseq",
+      "githubRepo": "ModExplorer",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["ModExplorer.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "ExtremeRoles",
+      "name": "Extreme Roles",
+      "author": "yukieiji",
+      "description": "AmongUs Mod that adds +100 roles, +1300 options, and cosmetics",
+      "githubOwner": "yukieiji",
+      "githubRepo": "ExtremeRoles",
+      "category": "Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": ["STEAM_ONLY_ExtremeRoles", "STEAM_ONLY"],
+          "exclude": []
+        },
+        "epic": {
+          "patterns": ["ExtremeRoles-v", "ExtremeRoles"],
+          "exclude": ["STEAM_ONLY"]
+        },
+        "dll": {
+          "patterns": ["ExtremeRoles.dll", "ExtremeSkins.dll", "ExtremeVoiceEngine.dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "BetterAmongUs",
+      "name": "Better Among Us",
+      "author": "D1GQ",
+      "description": "A client-sided mod that enhances the experience for the popular game Among Us!",
+      "githubOwner": "D1GQ",
+      "githubRepo": "BetterAmongUs-Public",
+      "category": "Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": ["BAU-SteamItchio", "SteamItchio"],
+          "exclude": ["Epic", "epic", "MsStore", "msstore"]
+        },
+        "epic": {
+          "patterns": ["BAU-EpicMsStore", "EpicMsStore"],
+          "exclude": ["Steam", "steam", "Itchio", "itchio"]
+        },
+        "dll": {
+          "patterns": ["BetterAmongUs.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "BetterPolus",
+      "name": "Better Polus",
+      "author": "Brybry16",
+      "description": "An Among Us mod that tweaks Polus, allowing a more balanced experience.",
+      "githubOwner": "Brybry16",
+      "githubRepo": "BetterPolus",
+      "category": "Map",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["BetterPolus.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "SyzyfowyTownOfUs",
+      "name": "Syzyfowy Town Of Us",
+      "author": "LimeShep",
+      "description": "A Town Of Us fork that brings back classic roles, while also providing many new roles & modifiers",
+      "githubOwner": "LimeShep",
+      "githubRepo": "Town-Of-Us",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "PokeLobby",
+      "name": "Poké Lobby",
+      "author": "XtraCube",
+      "description": "Pokémon inspired lobby for Among Us",
+      "githubOwner": "XtraCube",
+      "githubRepo": "PokemongUs",
+      "category": "Fun",
+      "assetFilters": {
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "SuperNewRoles",
+      "name": "SuperNewRoles!!!!",
+      "author": "SuperNewRoles",
+      "description": "SuperNewRoles!!!! is an Among Us mod that includes various elements such as new modes and roles.",
+      "githubOwner": "SuperNewRoles",
+      "githubRepo": "SuperNewRoles",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "Nebula",
+      "name": "Nebula On The Ship",
+      "author": "Dolly1016",
+      "description": "Unique and stylish role, features, and countless colors!",
+      "githubOwner": "Dolly1016",
+      "githubRepo": "Nebula",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "AleLuduMod",
+      "name": "AleLuduMod",
+      "author": "townofus-pl",
+      "description": "This mod unlocks the possibility to show more than 15 players on screen during an emergency meeting, on vitals, and on the Transporter/Glitch screen.",
+      "githubOwner": "townofus-pl",
+      "githubRepo": "AleLuduMod",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["AleLuduMod.dll", ".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "Reactor",
+          "name": "Reactor",
+          "fileName": "Reactor.dll",
+          "githubOwner": "NuclearPowered",
+          "githubRepo": "Reactor",
+          "requiredVersion": null,
+          "optional": false
+        }
+      ],
+      "incompatibilities": []
+    },
+    {
+      "id": "EmojisInTheChat",
+      "name": "Emojis In The Chat",
+      "author": "WanderingPix",
+      "description": "An among us mod which adds emojis to chat!",
+      "githubOwner": "WanderingPix",
+      "githubRepo": "Emojis-in-the-mogus-chat",
+      "category": "Fun",
+      "assetFilters": {
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "TownOfUsMiraRolesExtension",
+      "name": "Town Of Us Mira Roles Extension",
+      "author": "rewalo",
+      "description": "An extension mod for Town of Us: Mira that adds new roles and modifiers.",
+      "githubOwner": "rewalo",
+      "githubRepo": "TownOfUsMiraRolesExtension",
+      "category": "Mod",
+      "assetFilters": {
+        "steam": {
+          "patterns": ["steam-itch"],
+          "exclude": []
+        },
+        "epic": {
+          "patterns": ["epic-msstore"],
+          "exclude": []
+        },
+        "dll": {
+          "patterns": ["TouMiraRolesExtension.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "TownOfUs",
+          "name": "Town of Us Mira",
+          "fileName": "TownOfUsMira.dll",
+          "githubOwner": "AU-Avengers",
+          "githubRepo": "TOU-Mira",
+          "requiredVersion": null,
+          "optional": false
+        },
+        {
+          "modId": "MiraAPI",
+          "name": "MiraAPI",
+          "fileName": "MiraAPI.dll",
+          "githubOwner": "All-Of-Us-Mods",
+          "githubRepo": "MiraAPI",
+          "requiredVersion": null,
+          "optional": false
+        }
+      ],
+      "incompatibilities": [],
+      "featured": true
+    },
+    {
+      "id": "TouMiraLegacy",
+      "name": "TouMiraLegacy",
+      "author": "AU-Avengers",
+      "description": "An Among Us extension mod for TOU Mira that brings back the old Town of Us and pre-2021 Among Us feeling.",
+      "githubOwner": "AU-Avengers",
+      "githubRepo": "TouMiraLegacy",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["TouMiraLegacy.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "TownOfUs",
+          "name": "Town of Us Mira",
+          "fileName": "TownOfUsMira.dll",
+          "githubOwner": "AU-Avengers",
+          "githubRepo": "TOU-Mira",
+          "requiredVersion": null,
+          "optional": false
+        }
+      ],
+      "incompatibilities": []
+    },
+    {
+      "id": "DraftModeTOUM",
+      "name": "DraftMode TOUM",
+      "author": "idkimneil",
+      "description": "A Town of Us Mira addon that adds a draft-pick mode for selecting roles before the game starts.",
+      "githubOwner": "idkimneil",
+      "githubRepo": "DraftMode-TOUM",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": [".dll"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "TownOfUs",
+          "name": "Town of Us Mira",
+          "fileName": "TownOfUsMira.dll",
+          "githubOwner": "AU-Avengers",
+          "githubRepo": "TOU-Mira",
+          "requiredVersion": null,
+          "optional": false
+        },
+        {
+          "modId": "MiraAPI",
+          "name": "MiraAPI",
+          "fileName": "MiraAPI.dll",
+          "githubOwner": "All-Of-Us-Mods",
+          "githubRepo": "MiraAPI",
+          "requiredVersion": null,
+          "optional": false
+        }
+      ],
+      "incompatibilities": []
+    },
+    {
+      "id": "TabsBuilderApi",
+      "name": "Tabs Builder API",
+      "author": "Cosmella",
+      "description": "API for building tabs in the player customization menu. Required by Outfit Presets.",
+      "category": "Dependency",
+      "source": "thunderstore",
+      "thunderstoreNamespace": "Cosmella",
+      "thunderstoreName": "TabsBuilderApi",
+      "assetFilters": {
+        "default": {
+          "patterns": [".zip"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "incompatibilities": []
+    },
+    {
+      "id": "OutfitPresets",
+      "name": "Outfit Presets",
+      "author": "Cosmella",
+      "description": "Save and quickly switch between cosmetic outfit presets in-game.",
+      "category": "Mod",
+      "source": "thunderstore",
+      "thunderstoreNamespace": "Cosmella",
+      "thunderstoreName": "Outfit_Presets",
+      "assetFilters": {
+        "default": {
+          "patterns": [".zip"],
+          "exclude": []
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "TabsBuilderApi",
+          "name": "Tabs Builder API"
+        }
+      ],
+      "incompatibilities": []
+    }
+  ]
+}

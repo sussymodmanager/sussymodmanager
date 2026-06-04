@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SussyModManager.ViewModels"
+             x:Class="SussyModManager.Views.PresetsView"
+             x:DataType="vm:PresetsViewModel">
+
+    <Grid RowDefinitions="Auto,*" Margin="28,24,28,16">
+
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0" Spacing="2">
+                <TextBlock Text="{Binding Title}" Classes="h1" />
+                <TextBlock Text="{Binding Subtitle}" Classes="muted" />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="ghost" Content="Save current selection"
+                    Command="{Binding SaveCurrentSelectionCommand}" VerticalAlignment="Center" />
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" Margin="0,18,0,0">
+            <ItemsControl ItemsSource="{Binding Presets}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:PresetCardViewModel">
+                        <Border Classes="card" Margin="0,0,0,16" Padding="22">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="10">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Text="{Binding Name}" Classes="h2" />
+                                        <Border Classes="badge" VerticalAlignment="Center"
+                                                IsVisible="{Binding IsBuiltin}">
+                                            <TextBlock Text="BUILT-IN" />
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Description}" Classes="muted"
+                                               TextWrapping="Wrap" MaxWidth="640" HorizontalAlignment="Left" />
+                                    <ItemsControl ItemsSource="{Binding ModNames}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                                                        CornerRadius="8" Padding="10,5" Margin="0,0,8,8">
+                                                    <TextBlock Text="{Binding}" FontSize="12"
+                                                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center"
+                                            Margin="16,0,0,0" Width="150">
+                                    <Button Classes="accent" Content="▶  Play Pack"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Command="{Binding PlayCommand}"
+                                            IsEnabled="{Binding !IsBusy}" />
+                                    <Button Classes="ghost" Content="Install Pack"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Command="{Binding InstallCommand}"
+                                            IsEnabled="{Binding !IsBusy}" />
+                                    <ProgressBar IsIndeterminate="True" Height="3"
+                                                 IsVisible="{Binding IsBusy}"
+                                                 Foreground="{DynamicResource AccentBrush}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
