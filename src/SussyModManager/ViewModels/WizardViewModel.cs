@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SussyModManager.Core.Helpers;
 using SussyModManager.Core.Models;
 using SussyModManager.Core.Services;
 using SussyModManager.Services;
@@ -142,29 +143,42 @@ namespace SussyModManager.ViewModels
 
             if (InstallPack && !string.IsNullOrWhiteSpace(AmongUsPath))
             {
-                var pack = _env.Presets.GetAllPresets(_env.Config)
-                    .FirstOrDefault(p => p.Builtin);
-                if (pack != null)
+                IsBusy = true;
+                try
                 {
-                    IsBusy = true;
-                    try
+                    // Fresh installs start with an empty store cache and fall back to the data files
+                    // bundled in the release, which can lag behind the live pack definition. Pull the
+                    // latest from GitHub first so onboarding always installs the current SUS AF PACK
+                    // (and not mods we've since removed) rather than racing the background refresh.
+                    BusyStatus = "Fetching the latest SUS AF PACK...";
+                    try { await DataStore.RefreshAsync().ConfigureAwait(true); } catch { }
+
+                    var pack = _env.Presets.GetAllPresets(_env.Config)
+                        .FirstOrDefault(p => p.Builtin);
+                    if (pack != null)
                     {
                         BusyStatus = $"Installing {pack.Name}...";
                         _env.Manager.Progress += OnPackProgress;
-                        var result = await _env.Manager.InstallPresetAsync(pack).ConfigureAwait(true);
-                        _env.SetStatus(result.Message);
-                        await DialogService.ShowResultAsync($"Install {pack.Name}", result).ConfigureAwait(true);
+                        try
+                        {
+                            var result = await _env.Manager.InstallPresetAsync(pack).ConfigureAwait(true);
+                            _env.SetStatus(result.Message);
+                            await DialogService.ShowResultAsync($"Install {pack.Name}", result).ConfigureAwait(true);
+                        }
+                        finally
+                        {
+                            _env.Manager.Progress -= OnPackProgress;
+                        }
                     }
-                    catch (Exception ex)
-                    {
-                        _env.SetStatus($"Pack install failed: {ex.Message}");
-                        await DialogService.ShowErrorAsync("Pack install failed", ex.Message).ConfigureAwait(true);
-                    }
-                    finally
-                    {
-                        _env.Manager.Progress -= OnPackProgress;
-                        IsBusy = false;
-                    }
+                }
+                catch (Exception ex)
+                {
+                    _env.SetStatus($"Pack install failed: {ex.Message}");
+                    await DialogService.ShowErrorAsync("Pack install failed", ex.Message).ConfigureAwait(true);
+                }
+                finally
+                {
+                    IsBusy = false;
                 }
             }
 
