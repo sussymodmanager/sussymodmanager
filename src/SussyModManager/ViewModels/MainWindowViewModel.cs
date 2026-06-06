@@ -37,6 +37,12 @@ namespace SussyModManager.ViewModels
 
         public WizardViewModel CreateWizard() => new WizardViewModel(_env);
 
+        public void SetStatus(string message)
+        {
+            StatusText = message;
+            StatusIsError = LooksLikeError(message);
+        }
+
         /// <summary>Refresh all pages after the onboarding wizard installs the pack / sets the path.</summary>
         public void OnWizardCompleted()
         {
@@ -52,11 +58,10 @@ namespace SussyModManager.ViewModels
         {
             NeedsWizard = !config.FirstLaunchWizardCompleted;
             _env = new AppEnvironment(config, profiles);
-            _env.StatusChanged += (_, message) =>
-            {
-                StatusText = message;
-                StatusIsError = LooksLikeError(message);
-            };
+            _env.Manager.ReconcileInstalledMods();
+            _env.Manager.SetLaunchSelection(config.SelectedMods, syncPlugins: false);
+
+            _env.StatusChanged += (_, message) => SetStatus(message);
             _env.NavigationRequested += (_, tab) => Navigate(tab);
 
             Store = new StoreViewModel(_env);
@@ -67,22 +72,31 @@ namespace SussyModManager.ViewModels
             CurrentPage = Store;
 
             if (string.IsNullOrEmpty(config.AmongUsPath))
-            {
-                var detected = AmongUsLocator.Detect();
-                if (!string.IsNullOrEmpty(detected))
-                {
-                    config.AmongUsPath = detected;
-                    config.Save();
-                    Settings.SetPath(detected);
-                    StatusText = $"Detected Among Us at {detected}";
-                }
-                else
-                {
-                    StatusText = "Welcome! Set your Among Us path in Settings to get started.";
-                }
-            }
+                _ = AutoDetectGameAsync();
+            else if (config.LegacyModsCopyPending)
+                SetStatus("Importing mods from BeanModManager...");
 
             _ = CheckForAppUpdateAsync();
+        }
+
+        private async System.Threading.Tasks.Task AutoDetectGameAsync()
+        {
+            SetStatus("Looking for Among Us...");
+            try
+            {
+                var detected = await AppEnvironment.DetectGameAsync(includeHeavyProbes: false).ConfigureAwait(true);
+                var status = _env.ApplyAutoDetectedGame(detected);
+                if (detected != null && !string.IsNullOrEmpty(detected.Path))
+                {
+                    Settings.SetPath(detected.Path);
+                    Settings.SelectedChannel = _env.Config.GameChannel;
+                }
+                SetStatus(status);
+            }
+            catch
+            {
+                SetStatus("Welcome! Set your Among Us path in Settings to get started.");
+            }
         }
 
         private async System.Threading.Tasks.Task CheckForAppUpdateAsync()
@@ -96,7 +110,6 @@ namespace SussyModManager.ViewModels
                 UpdateText = $"Update available: v{_appUpdate.LatestVersion} (you have {AppVersion})";
                 UpdateAvailable = true;
 
-                // Automatic path: silently download + stage, then offer a one-click restart.
                 if (_env.Config.AutoUpdateApp && _appUpdate.CanAutoApply)
                 {
                     UpdateText = $"Downloading update v{_appUpdate.LatestVersion}...";
@@ -138,7 +151,6 @@ namespace SussyModManager.ViewModels
             _env.SetStatus("Mod store updated from GitHub.");
         }
 
-        /// <summary>Either restart to apply a staged update, or open the download page.</summary>
         [RelayCommand]
         private void DownloadUpdate()
         {

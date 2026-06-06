@@ -6,7 +6,9 @@
     (dotnet ... -p:Version=1.2.3), and AppInfo.Version reads it back at runtime.
   -->
   <PropertyGroup>
-    <Version>1.0.0</Version>
+    <Version>1.0.4</Version>
+    <InformationalVersion>1.0.4</InformationalVersion>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <Product>SUSSYMODMANAGER</Product>
     <Company>SUSSYMODMANAGER</Company>
     <Authors>SUSSYMODMANAGER</Authors>

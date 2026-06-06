@@ -56,12 +56,8 @@ namespace SussyModManager.ViewModels
 
             if (string.IsNullOrWhiteSpace(AmongUsPath))
             {
-                var detected = AmongUsLocator.Detect();
-                if (!string.IsNullOrEmpty(detected))
-                {
-                    AmongUsPath = detected;
-                    PathStatus = $"Auto-detected: {detected}";
-                }
+                PathStatus = "Looking for Among Us...";
+                _ = AutoDetectPathAsync();
             }
             else
             {
@@ -69,18 +65,54 @@ namespace SussyModManager.ViewModels
             }
         }
 
-        [RelayCommand]
-        private void Detect()
+        private async Task AutoDetectPathAsync()
         {
-            var path = AmongUsLocator.Detect();
-            if (!string.IsNullOrEmpty(path))
+            try
             {
-                AmongUsPath = path;
-                PathStatus = $"Found Among Us at {path}";
+                var detected = await AppEnvironment.DetectGameAsync(includeHeavyProbes: true).ConfigureAwait(true);
+                if (detected != null && !string.IsNullOrEmpty(detected.Path))
+                {
+                    AmongUsPath = detected.Path;
+                    if (!string.IsNullOrEmpty(detected.Channel))
+                        _env.Config.GameChannel = detected.Channel;
+                    PathStatus = _env.ApplyAutoDetectedGame(detected);
+                }
+                else
+                {
+                    PathStatus = "Couldn't auto-detect. Use Browse to pick the folder.";
+                }
             }
-            else
+            catch
             {
                 PathStatus = "Couldn't auto-detect. Use Browse to pick the folder.";
+            }
+        }
+
+        [RelayCommand]
+        private async Task Detect()
+        {
+            if (IsBusy)
+                return;
+            IsBusy = true;
+            try
+            {
+                PathStatus = "Looking for Among Us...";
+                var found = await AppEnvironment.DetectGameAsync(includeHeavyProbes: true).ConfigureAwait(true);
+                if (found != null && !string.IsNullOrEmpty(found.Path))
+                {
+                    AmongUsPath = found.Path;
+                    if (!string.IsNullOrEmpty(found.Channel))
+                        _env.Config.GameChannel = found.Channel;
+                    PathStatus = _env.ApplyAutoDetectedGame(found);
+                }
+                else
+                {
+                    PathStatus = "Couldn't auto-detect. Use Browse to pick the folder.";
+                }
+            }
+            finally
+            {
+                IsBusy = false;
             }
         }
 
@@ -89,6 +121,7 @@ namespace SussyModManager.ViewModels
             if (string.IsNullOrWhiteSpace(path))
                 return;
             AmongUsPath = path;
+            _env.Config.GameChannel = AmongUsLocator.GuessChannel(path);
             PathStatus = AmongUsLocator.IsValidGamePath(path)
                 ? $"Looks good: {path}"
                 : "That folder doesn't look like an Among Us install - you can still continue.";
@@ -131,7 +164,7 @@ namespace SussyModManager.ViewModels
         }
 
         [RelayCommand]
-        private void Skip() => Finalize();
+        private void Skip() => CompleteWizard();
 
         private async Task FinishAsync()
         {
@@ -182,12 +215,12 @@ namespace SussyModManager.ViewModels
                 }
             }
 
-            Finalize();
+            CompleteWizard();
         }
 
         private void OnPackProgress(object sender, string message) => BusyStatus = message;
 
-        private void Finalize()
+        private void CompleteWizard()
         {
             _env.Config.FirstLaunchWizardCompleted = true;
             _env.Save();

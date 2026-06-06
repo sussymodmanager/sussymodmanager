@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SussyModManager.Core.Models;
+using SussyModManager.Core.Services;
 using SussyModManager.Services;
 
 namespace SussyModManager.ViewModels
@@ -25,7 +26,14 @@ namespace SussyModManager.ViewModels
         public string Author => string.IsNullOrEmpty(Entry.author) ? "Unknown" : Entry.author;
         public string Description => Entry.description;
         public string Category => string.IsNullOrEmpty(Entry.category) ? "Mod" : Entry.category;
-        public bool IsFeatured => Entry.featured;
+        public bool IsDependency => Entry.IsDependency;
+        public bool IsCustom =>
+            _env.Config.InstalledMods.Any(m =>
+                string.Equals(m.Id, Id, StringComparison.OrdinalIgnoreCase) && m.IsCustom);
+        public bool ShowLaunchCheckbox => IsInstalled && !IsDependency;
+        public bool ShowInstallButton => !IsInstalled;
+        public bool ShowUpdateButton => HasUpdate && !IsCustom;
+        public bool IsFeatured => Entry.featured && !IsCustom;
         public string Initial => string.IsNullOrEmpty(Name) ? "?" : Name.Substring(0, 1).ToUpperInvariant();
 
         public ModCardViewModel(AppEnvironment env, ModRegistryEntry entry)
@@ -41,7 +49,12 @@ namespace SussyModManager.ViewModels
             IsSelected = _env.Config.SelectedMods.Contains(Id, StringComparer.OrdinalIgnoreCase);
             var installed = _env.Config.InstalledMods.FirstOrDefault(m =>
                 string.Equals(m.Id, Id, StringComparison.OrdinalIgnoreCase));
-            StatusText = installed != null ? $"Installed {installed.Version}" : null;
+            if (installed == null)
+                StatusText = null;
+            else if (installed.IsCustom)
+                StatusText = "Custom DLL";
+            else
+                StatusText = $"Installed {installed.Version}";
         }
 
         [RelayCommand]
@@ -49,7 +62,7 @@ namespace SussyModManager.ViewModels
         {
             if (IsBusy)
                 return;
-            if (!await _env.EnsureGamePathAsync($"install {Name}").ConfigureAwait(true))
+            if (!await _env.EnsureModOperationsReadyAsync($"install {Name}").ConfigureAwait(true))
                 return;
             if (!await ConfirmIncompatibilitiesAsync().ConfigureAwait(true))
                 return;
@@ -100,7 +113,7 @@ namespace SussyModManager.ViewModels
         [RelayCommand]
         private async Task UpdateAsync()
         {
-            if (IsBusy)
+            if (IsBusy || IsCustom)
                 return;
             IsBusy = true;
             try
@@ -139,8 +152,17 @@ namespace SussyModManager.ViewModels
             if (!confirmed)
                 return;
 
-            _env.Manager.UninstallMod(Id);
-            _env.SetStatus($"Uninstalled {Name}.");
+            IsBusy = true;
+            try
+            {
+                _env.SetStatus($"Removing {Name}...");
+                await Task.Run(() => _env.Manager.UninstallMod(Id)).ConfigureAwait(true);
+                _env.SetStatus($"Uninstalled {Name}.");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
             RefreshState();
             Uninstalled?.Invoke(this, EventArgs.Empty);
         }
@@ -148,24 +170,23 @@ namespace SussyModManager.ViewModels
         [RelayCommand]
         private async Task ToggleSelectAsync()
         {
-            if (!IsInstalled)
+            if (!IsInstalled || IsDependency)
                 return;
 
             var isSelected = _env.Config.SelectedMods.Contains(Id, StringComparer.OrdinalIgnoreCase);
+            if (!isSelected && !await ConfirmIncompatibilitiesAsync("Select").ConfigureAwait(true))
+            {
+                RefreshState();
+                return;
+            }
+
+            var next = _env.Config.SelectedMods.ToList();
             if (isSelected)
-            {
-                _env.Config.SelectedMods.RemoveAll(x => string.Equals(x, Id, StringComparison.OrdinalIgnoreCase));
-            }
+                next.RemoveAll(x => string.Equals(x, Id, StringComparison.OrdinalIgnoreCase));
             else
-            {
-                if (!await ConfirmIncompatibilitiesAsync("Select").ConfigureAwait(true))
-                {
-                    RefreshState();
-                    return;
-                }
-                _env.Config.SelectedMods.Add(Id);
-            }
-            _env.Save();
+                next.Add(Id);
+
+            _env.Manager.SetLaunchSelection(next, syncPlugins: !string.IsNullOrEmpty(_env.Config.AmongUsPath));
             RefreshState();
         }
     }

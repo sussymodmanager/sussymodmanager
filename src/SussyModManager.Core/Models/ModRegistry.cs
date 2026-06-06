@@ -10,6 +10,8 @@ namespace SussyModManager.Core.Models
 
     public class ModRegistryEntry
     {
+        public const string DependencyCategory = "Dependency";
+
         public string id { get; set; }
         public string name { get; set; }
         public string author { get; set; }
@@ -35,6 +37,18 @@ namespace SussyModManager.Core.Models
         public string thunderstoreNamespace { get; set; }
         public string thunderstoreName { get; set; }
         public string thunderstoreVersion { get; set; }
+
+        public bool IsDependency =>
+            string.Equals(category, DependencyCategory, System.StringComparison.OrdinalIgnoreCase);
+
+        public static ModRegistryEntry FromCustomMod(InstalledMod mod) => new ModRegistryEntry
+        {
+            id = mod.Id,
+            name = mod.Name,
+            author = "Custom",
+            description = "Imported .dll (not from the mod store).",
+            category = "Mod"
+        };
     }
 
     public class VersionDependency

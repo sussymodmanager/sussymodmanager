@@ -22,6 +22,8 @@ namespace SussyModManager.Core.Services
 
         public async Task FetchLatestAsync(Mod mod, ModRegistryEntry entry, ModCacheEntry bundledCache, CancellationToken ct = default)
         {
+            UseBundledFallback(mod, entry, bundledCache);
+
             var apiUrl = $"https://api.github.com/repos/{mod.GitHubOwner}/{mod.GitHubRepo}/releases/latest";
             var cacheKey = $"mod_{mod.Id}_latest";
 
@@ -48,8 +50,13 @@ namespace SussyModManager.Core.Services
                 if (release == null || string.IsNullOrEmpty(release.tag_name))
                     return;
 
-                mod.Versions.Clear();
-                AssetSelector.AddVersionsFromRegistry(mod, release, entry, release.prerelease);
+                var fresh = new Mod();
+                AssetSelector.AddVersionsFromRegistry(fresh, release, entry, release.prerelease);
+                if (fresh.Versions.Count > 0)
+                {
+                    mod.Versions.Clear();
+                    mod.Versions.AddRange(fresh.Versions);
+                }
             }
             catch (HttpRequestException ex) when (IsRateLimit(ex))
             {
@@ -60,6 +67,18 @@ namespace SussyModManager.Core.Services
             {
                 UseBundledFallback(mod, entry, bundledCache);
             }
+
+            TryDirectDownloadFallback(mod, entry);
+        }
+
+        private static void TryDirectDownloadFallback(Mod mod, ModRegistryEntry entry)
+        {
+            if (mod.Versions.Count > 0)
+                return;
+
+            var direct = DirectDownloadResolver.TryResolve(entry);
+            if (direct != null)
+                mod.Versions.Add(direct);
         }
 
         public async Task FetchAllAsync(Mod mod, ModRegistryEntry entry, CancellationToken ct = default)

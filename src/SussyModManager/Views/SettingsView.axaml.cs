@@ -37,5 +37,6 @@ namespace SussyModManager.Views
                 vm.SetPath(folder.Path.LocalPath);
             }
         }
+
     }
 }

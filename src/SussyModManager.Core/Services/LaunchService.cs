@@ -24,8 +24,6 @@ namespace SussyModManager.Core.Services
 
         public void LaunchVanilla(string amongUsPath)
         {
-            // Vanilla = no BepInEx injection. On Windows we can run the exe directly only if no
-            // winhttp shim is present; the manager clears plugins before vanilla launch elsewhere.
             Report("Launching Among Us (vanilla)...");
             Launch(amongUsPath);
         }
@@ -45,25 +43,37 @@ namespace SussyModManager.Core.Services
 
         private void StartWindowsExe(string amongUsPath)
         {
+            if (GamePathClassifier.IsSteamPath(amongUsPath))
+            {
+                StartViaSteam();
+                return;
+            }
+
             var exe = Path.Combine(amongUsPath, "Among Us.exe");
             if (File.Exists(exe))
             {
-                Process.Start(new ProcessStartInfo
+                try
                 {
-                    FileName = exe,
-                    WorkingDirectory = amongUsPath,
-                    UseShellExecute = true
-                });
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = exe,
+                        WorkingDirectory = amongUsPath,
+                        UseShellExecute = true
+                    });
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Report($"Could not launch Among Us: {ex.Message}");
+                    return;
+                }
             }
-            else
-            {
-                StartViaSteam();
-            }
+
+            Report("Could not find Among Us.exe in the configured folder.");
         }
 
         private void StartUnix(string amongUsPath)
         {
-            // Native Unix BepInEx launcher takes priority when present.
             var script = Path.Combine(amongUsPath, "run_bepinex.sh");
             if (File.Exists(script))
             {
@@ -83,7 +93,6 @@ namespace SussyModManager.Core.Services
                 }
             }
 
-            // Otherwise the game is a Windows build run through Proton/Wine: defer to Steam.
             StartViaSteam();
         }
 
@@ -110,6 +119,10 @@ namespace SussyModManager.Core.Services
                 Report($"Could not launch via Steam: {ex.Message}");
             }
         }
+
+        /// <summary>Whether a failed direct launch should fall back to Steam (test seam).</summary>
+        internal static bool ShouldUseSteamHandoff(string amongUsPath) =>
+            GamePathClassifier.IsSteamPath(amongUsPath);
 
         private void Report(string message) => ProgressChanged?.Invoke(this, message);
     }

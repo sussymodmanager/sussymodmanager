@@ -30,7 +30,7 @@ namespace SussyModManager.Core
         {
             try
             {
-                var asm = Assembly.GetExecutingAssembly();
+                var asm = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
                 var informational = asm
                     .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
                 if (!string.IsNullOrWhiteSpace(informational))

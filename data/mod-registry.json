@@ -78,6 +78,15 @@
           "githubRepo": "MiraAPI",
           "requiredVersion": null,
           "optional": false
+        },
+        {
+          "modId": "Reactor",
+          "name": "Reactor",
+          "fileName": "Reactor.dll",
+          "githubOwner": "NuclearPowered",
+          "githubRepo": "Reactor",
+          "requiredVersion": ">=2.5.0",
+          "optional": false
         }
       ],
       "packageType": "nested",
@@ -1081,8 +1090,9 @@
       "category": "Mod",
       "assetFilters": {
         "dll": {
-          "patterns": [".dll"],
-          "exclude": []
+          "patterns": ["DraftModeTOUM.dll"],
+          "exclude": [],
+          "exactMatch": true
         }
       },
       "requiresDepot": false,

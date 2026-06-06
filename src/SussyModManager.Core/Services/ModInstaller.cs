@@ -64,23 +64,28 @@ namespace SussyModManager.Core.Services
             var pluginsPath = Path.Combine(amongUsPath, "BepInEx", "plugins");
             Directory.CreateDirectory(pluginsPath);
 
-            var dllFiles = Directory.GetFiles(modStoragePath, "*.dll", SearchOption.TopDirectoryOnly);
             var hasBepInExStructure = Directory.Exists(Path.Combine(modStoragePath, "BepInEx"));
-            var hasSubdirectories = Directory.GetDirectories(modStoragePath).Any();
 
-            if (dllFiles.Length > 0 && !hasBepInExStructure && !hasSubdirectories)
-            {
-                Report($"Copying {mod.Name} to plugins...");
-                foreach (var dll in dllFiles)
-                {
-                    var dest = Path.Combine(pluginsPath, Path.GetFileName(dll));
-                    SafeCopyFile(dll, dest);
-                }
-            }
-            else
+            if (hasBepInExStructure)
             {
                 Report($"Copying {mod.Name} files...");
-                CopyModTree(modStoragePath, amongUsPath);
+                CopyModTree(modStoragePath, amongUsPath, throwOnError: true);
+                return;
+            }
+
+            Report($"Copying {mod.Name} to plugins...");
+            var copied = 0;
+            foreach (var dll in Directory.GetFiles(modStoragePath, "*.dll", SearchOption.TopDirectoryOnly))
+            {
+                var dest = Path.Combine(pluginsPath, Path.GetFileName(dll));
+                SafeCopyFile(dll, dest, throwOnError: true);
+                copied++;
+            }
+
+            if (copied == 0)
+            {
+                Report($"Copying {mod.Name} files...");
+                CopyModTree(modStoragePath, amongUsPath, throwOnError: true);
             }
         }
 
@@ -95,6 +100,52 @@ namespace SussyModManager.Core.Services
             "libdoorstop.dylib", "doorstop_libs"
         };
 
+        /// <summary>
+        /// Copies a full Town-of-Us-style BepInEx bundle into the game root — identical to extracting
+        /// the official TOU zip manually (core, dotnet, config, unity-libs, plugins, loaders).
+        /// Does not touch an existing BepInEx/interop folder unless the pack ships one.
+        /// </summary>
+        public static void DeployFullGamePack(string sourceRoot, string destRoot)
+        {
+            DeployPackTree(sourceRoot, destRoot, skipPluginsAndInterop: false);
+        }
+
+        /// <summary>
+        /// Copies TOU-style pack support files (config, unity-libs, patchers) without clobbering
+        /// the live plugins folder, interop seed, or BepInEx core.
+        /// </summary>
+        public static void DeployLaunchPackAssets(string sourceRoot, string destRoot)
+        {
+            DeployPackTree(sourceRoot, destRoot, skipPluginsAndInterop: true);
+        }
+
+        private static void DeployPackTree(string sourceRoot, string destRoot, bool skipPluginsAndInterop)
+        {
+            if (!Directory.Exists(sourceRoot))
+                throw new DirectoryNotFoundException($"Pack folder not found: {sourceRoot}");
+
+            Directory.CreateDirectory(destRoot);
+            foreach (var file in Directory.EnumerateFiles(sourceRoot, "*", SearchOption.AllDirectories))
+            {
+                var relative = GetRelativePath(sourceRoot, file);
+                if (skipPluginsAndInterop && ShouldSkipLaunchPackAsset(relative))
+                    continue;
+
+                var dest = Path.Combine(destRoot, relative);
+                SafeCopyFile(file, dest);
+            }
+        }
+
+        private static bool ShouldSkipLaunchPackAsset(string relative)
+        {
+            var normalized = relative.Replace('\\', '/');
+            if (normalized.StartsWith("BepInEx/plugins/", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (normalized.StartsWith("BepInEx/interop/", StringComparison.OrdinalIgnoreCase))
+                return true;
+            return ShouldSkipModFile(relative);
+        }
+
         /// <summary>Plain recursive copy (used for one-time legacy data migration).</summary>
         public static void CopyDirectoryContents(string sourceDir, string destinationDir, bool overwrite)
         {
@@ -107,7 +158,7 @@ namespace SussyModManager.Core.Services
                 CopyDirectoryContents(dir, Path.Combine(destinationDir, Path.GetFileName(dir)), overwrite);
         }
 
-        private static void CopyModTree(string sourceRoot, string destRoot)
+        private static void CopyModTree(string sourceRoot, string destRoot, bool throwOnError = false)
         {
             Directory.CreateDirectory(destRoot);
 
@@ -118,7 +169,7 @@ namespace SussyModManager.Core.Services
                     continue;
 
                 var dest = Path.Combine(destRoot, relative);
-                SafeCopyFile(file, dest);
+                SafeCopyFile(file, dest, throwOnError);
             }
         }
 
@@ -152,7 +203,7 @@ namespace SussyModManager.Core.Services
             return Path.GetFileName(fullPath);
         }
 
-        private static void SafeCopyFile(string source, string dest)
+        private static void SafeCopyFile(string source, string dest, bool throwOnError = false)
         {
             try
             {
@@ -167,8 +218,10 @@ namespace SussyModManager.Core.Services
                 }
                 File.Copy(source, dest, true);
             }
-            catch
+            catch (Exception ex)
             {
+                if (throwOnError)
+                    throw new IOException($"Failed to copy {Path.GetFileName(source)}: {ex.Message}", ex);
             }
         }
 
