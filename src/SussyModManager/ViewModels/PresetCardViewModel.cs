@@ -115,6 +115,9 @@ namespace SussyModManager.ViewModels
         [RelayCommand]
         private async Task ExportAsync()
         {
+            if (IsBuiltin)
+                return;
+
             var path = await DialogService.SavePresetFileAsync(Name).ConfigureAwait(true);
             if (string.IsNullOrEmpty(path))
                 return;

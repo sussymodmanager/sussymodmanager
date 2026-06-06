@@ -70,6 +70,7 @@
                                     <Button Classes="ghost" Content="Export"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Command="{Binding ExportCommand}"
+                                            IsVisible="{Binding IsUserPreset}"
                                             IsEnabled="{Binding !IsBusy}" />
                                     <Grid ColumnDefinitions="*,*" IsVisible="{Binding IsUserPreset}">
                                         <Button Grid.Column="0" Classes="ghost" Content="Rename"
