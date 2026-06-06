@@ -24,4 +24,12 @@
     <ProjectReference Include="..\..\src\SussyModManager.Core\SussyModManager.Core.csproj" />
   </ItemGroup>
 
+  <!-- Mirror the app's data/ layout so CI can load bundled presets/registry without AppData cache. -->
+  <ItemGroup>
+    <Content Include="..\..\data\builtin-presets.json" Link="data\builtin-presets.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\data\mod-registry.json" Link="data\mod-registry.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\data\mod-cache.json" Link="data\mod-cache.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\data\color-profiles.json" Link="data\color-profiles.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
