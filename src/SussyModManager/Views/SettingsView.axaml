@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:SussyModManager.ViewModels"
+             xmlns:controls="using:Avalonia.Controls"
              x:Class="SussyModManager.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
 
@@ -106,45 +107,24 @@
                             <TextBlock Text="Custom theme" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimaryBrush}" />
                             <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                                       Text="Pick the four swatch colors. Everything else is filled in for you. Changes apply live." />
+                                       Text="Click a swatch to open the color picker. Everything else is filled in for you. Changes apply live." />
 
                             <CheckBox Content="Light mode" IsChecked="{Binding Editor.IsLight}"
                                       Foreground="{DynamicResource TextPrimaryBrush}" />
 
-                            <StackPanel Spacing="8">
-                                <Grid ColumnDefinitions="Auto,*">
-                                    <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0"
-                                            Background="{Binding Editor.Accent.Swatch}" VerticalAlignment="Bottom" />
-                                    <StackPanel Grid.Column="1" Spacing="3">
-                                        <TextBlock Text="{Binding Editor.Accent.Label}" Classes="muted" FontSize="12" />
-                                        <TextBox Text="{Binding Editor.Accent.Value}" Watermark="{Binding Editor.Accent.Watermark}" />
-                                    </StackPanel>
-                                </Grid>
-                                <Grid ColumnDefinitions="Auto,*">
-                                    <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0"
-                                            Background="{Binding Editor.AccentSecondary.Swatch}" VerticalAlignment="Bottom" />
-                                    <StackPanel Grid.Column="1" Spacing="3">
-                                        <TextBlock Text="{Binding Editor.AccentSecondary.Label}" Classes="muted" FontSize="12" />
-                                        <TextBox Text="{Binding Editor.AccentSecondary.Value}" Watermark="{Binding Editor.AccentSecondary.Watermark}" />
-                                    </StackPanel>
-                                </Grid>
-                                <Grid ColumnDefinitions="Auto,*">
-                                    <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0"
-                                            Background="{Binding Editor.Surface.Swatch}" VerticalAlignment="Bottom" />
-                                    <StackPanel Grid.Column="1" Spacing="3">
-                                        <TextBlock Text="{Binding Editor.Surface.Label}" Classes="muted" FontSize="12" />
-                                        <TextBox Text="{Binding Editor.Surface.Value}" Watermark="{Binding Editor.Surface.Watermark}" />
-                                    </StackPanel>
-                                </Grid>
-                                <Grid ColumnDefinitions="Auto,*">
-                                    <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0"
-                                            Background="{Binding Editor.Background.Swatch}" VerticalAlignment="Bottom" />
-                                    <StackPanel Grid.Column="1" Spacing="3">
-                                        <TextBlock Text="{Binding Editor.Background.Label}" Classes="muted" FontSize="12" />
-                                        <TextBox Text="{Binding Editor.Background.Value}" Watermark="{Binding Editor.Background.Watermark}" />
-                                    </StackPanel>
-                                </Grid>
-                            </StackPanel>
+                            <ItemsControl ItemsSource="{Binding Editor.SimpleColors}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:ThemeColorTokenViewModel">
+                                        <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,10">
+                                            <controls:ColorPicker Grid.Column="0"
+                                                                  Color="{Binding PickerColor, Mode=TwoWay}"
+                                                                  Margin="0,0,12,0" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Label}" Classes="muted"
+                                                       FontSize="12" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
                             <CheckBox Content="Edit all colors" IsChecked="{Binding Editor.ShowAdvanced}"
                                       Foreground="{DynamicResource TextPrimaryBrush}" />
@@ -158,12 +138,9 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="vm:ThemeColorTokenViewModel">
-                                        <StackPanel Width="200" Margin="0,0,16,10" Spacing="3">
-                                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                                <Border Width="20" Height="20" CornerRadius="4" Background="{Binding Swatch}" />
-                                                <TextBlock Text="{Binding Label}" Classes="muted" FontSize="12" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                            <TextBox Text="{Binding Value}" Watermark="{Binding Watermark}" />
+                                        <StackPanel Width="220" Margin="0,0,16,10" Spacing="6">
+                                            <TextBlock Text="{Binding Label}" Classes="muted" FontSize="12" />
+                                            <controls:ColorPicker Color="{Binding PickerColor, Mode=TwoWay}" />
                                         </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

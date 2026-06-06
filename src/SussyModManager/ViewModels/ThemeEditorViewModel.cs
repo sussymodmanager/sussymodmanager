@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SussyModManager.Core.Helpers;
@@ -18,6 +19,8 @@ namespace SussyModManager.ViewModels
         public ThemeColorTokenViewModel Surface { get; }
         public ThemeColorTokenViewModel Background { get; }
 
+        public IReadOnlyList<ThemeColorTokenViewModel> SimpleColors { get; }
+
         public ObservableCollection<ThemeColorTokenViewModel> AdvancedTokens { get; } =
             new ObservableCollection<ThemeColorTokenViewModel>();
 
@@ -36,6 +39,8 @@ namespace SussyModManager.ViewModels
             AdvancedTokens.Add(new ThemeColorTokenViewModel("Warning", "#FFFBBF24", null, ApplyLive));
             AdvancedTokens.Add(new ThemeColorTokenViewModel("Danger", "#FFF87171", null, ApplyLive));
             AdvancedTokens.Add(new ThemeColorTokenViewModel("Glow", "#668B5CF6", null, ApplyLive));
+
+            SimpleColors = new[] { Accent, AccentSecondary, Surface, Background };
         }
 
         public void LoadFrom(ColorProfile profile)
