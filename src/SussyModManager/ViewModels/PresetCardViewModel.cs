@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SussyModManager.Core.Helpers;
 using SussyModManager.Core.Models;
 using SussyModManager.Services;
 
@@ -109,6 +110,24 @@ namespace SussyModManager.ViewModels
             _env.Save();
             _env.SetStatus($"Deleted preset {Name}.");
             Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        [RelayCommand]
+        private async Task ExportAsync()
+        {
+            var path = await DialogService.SavePresetFileAsync(Name).ConfigureAwait(true);
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            try
+            {
+                PresetShareFile.Write(Preset, path);
+                _env.SetStatus($"Exported \"{Name}\" to {path}");
+            }
+            catch (Exception ex)
+            {
+                await DialogService.ShowErrorAsync("Export failed", ex.Message).ConfigureAwait(true);
+            }
         }
 
         [RelayCommand]
