@@ -38,13 +38,22 @@ public class LaunchSelectionTests
         var config = new Config();
         foreach (var (id, installed) in mods)
         {
-            if (installed)
-                config.InstalledMods.Add(new InstalledMod { Id = id, Name = id });
+            if (!installed)
+                continue;
+            config.InstalledMods.Add(new InstalledMod { Id = id, Name = id });
+            SeedLaunchableFiles(config, id);
         }
 
         var store = new ModStore();
         store.LoadRegistryFromJson(Registry);
         return (new ModManager(config, store), config);
+    }
+
+    private static void SeedLaunchableFiles(Config config, string modId)
+    {
+        var dir = Path.Combine(config.ModsFolder, modId);
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, modId + ".dll"), "stub");
     }
 
     [Fact]
@@ -109,6 +118,8 @@ public class LaunchSelectionTests
         var config = new Config();
         config.InstalledMods.Add(new InstalledMod { Id = "TownOfUs", Name = "Town of Us Mira" });
         config.InstalledMods.Add(new InstalledMod { Id = "MiraAPI", Name = "Mira API" });
+        SeedLaunchableFiles(config, "TownOfUs");
+        SeedLaunchableFiles(config, "MiraAPI");
 
         var store = new ModStore();
         store.LoadRegistryFromJson(Registry);

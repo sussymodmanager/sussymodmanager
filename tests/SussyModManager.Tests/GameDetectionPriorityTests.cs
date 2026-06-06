@@ -54,9 +54,25 @@ public class GameDetectionPriorityTests
     [Fact]
     public void BuildCandidateLocations_OrdersSteamBeforeEpic()
     {
-        var candidates = AmongUsLocator.BuildCandidateLocations(includeHeavyProbes: false).Take(3).ToList();
-        Assert.True(candidates.Count > 0);
+        var candidates = AmongUsLocator.BuildCandidateLocations(includeHeavyProbes: false).Take(10).ToList();
+
+        // Linux/macOS CI has no Steam installs or MS Store probes — only assert ordering when present.
+        if (candidates.Count == 0)
+            return;
+
         Assert.Equal(AmongUsLocator.SteamChannel, candidates[0].Channel);
+
+        if (OperatingSystem.IsWindows())
+        {
+            var epicIndex = candidates.FindIndex(c =>
+                string.Equals(c.Channel, AmongUsLocator.EpicChannel, StringComparison.Ordinal));
+            if (epicIndex >= 0)
+                Assert.True(epicIndex > 0, "Epic/MS Store candidates should follow Steam paths.");
+        }
+        else
+        {
+            Assert.All(candidates, c => Assert.Equal(AmongUsLocator.SteamChannel, c.Channel));
+        }
     }
 
     private static string CreateTempInstall(string channel)
