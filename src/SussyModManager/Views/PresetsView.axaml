@@ -59,6 +59,22 @@
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Command="{Binding InstallCommand}"
                                             IsEnabled="{Binding !IsBusy}" />
+                                    <Button Classes="ghost" Content="Load selection"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Command="{Binding ApplyCommand}"
+                                            IsEnabled="{Binding !IsBusy}" />
+                                    <Grid ColumnDefinitions="*,*" IsVisible="{Binding IsUserPreset}">
+                                        <Button Grid.Column="0" Classes="ghost" Content="Rename"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Margin="0,0,4,0"
+                                                Command="{Binding RenameCommand}"
+                                                IsEnabled="{Binding !IsBusy}" />
+                                        <Button Grid.Column="1" Classes="danger" Content="Delete"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Margin="4,0,0,0"
+                                                Command="{Binding DeleteCommand}"
+                                                IsEnabled="{Binding !IsBusy}" />
+                                    </Grid>
                                     <ProgressBar IsIndeterminate="True" Height="3"
                                                  IsVisible="{Binding IsBusy}"
                                                  Foreground="{DynamicResource AccentBrush}" />

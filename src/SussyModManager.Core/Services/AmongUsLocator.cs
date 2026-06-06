@@ -1,18 +1,21 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text.RegularExpressions;
 using SussyModManager.Core.Platform;
 
 namespace SussyModManager.Core.Services
 {
+    public sealed record GameLocation(string Path, string Channel);
+
     /// <summary>
-    /// Cross-platform Among Us discovery. Scans common Steam install roots plus
-    /// libraryfolders.vdf for extra libraries on Windows, macOS and Linux (native + Proton).
+    /// Cross-platform Among Us discovery facade. Delegates to store-specific scanners and picks
+    /// the best install (Steam first, then Epic, then Microsoft Store / Xbox).
     /// </summary>
     public static class AmongUsLocator
     {
+        public const string SteamChannel = GameChannels.Steam;
+        public const string EpicChannel = GameChannels.EpicMsStore;
+
         public static bool IsValidGamePath(string path)
         {
             if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
@@ -22,82 +25,70 @@ namespace SussyModManager.Core.Services
                    Directory.Exists(Path.Combine(path, "Among Us.app"));
         }
 
-        public static string Detect()
+        /// <summary>Back-compat helper that returns just the path of the best detected install.</summary>
+        public static string Detect() => DetectGame()?.Path;
+
+        /// <summary>
+        /// Fast detect: Steam + Epic manifests + XboxGames. Skips PowerShell/drive sweeps so startup
+        /// stays responsive; use <paramref name="includeHeavyProbes"/> for a full scan (Settings Detect).
+        /// </summary>
+        public static GameLocation DetectGame(bool includeHeavyProbes = false)
         {
-            foreach (var root in GetSteamRoots())
+            foreach (var candidate in BuildCandidateLocations(includeHeavyProbes))
             {
-                foreach (var library in GetLibraryPaths(root))
-                {
-                    var candidate = Path.Combine(library, "steamapps", "common", "Among Us");
-                    if (IsValidGamePath(candidate))
-                        return candidate;
-                }
+                if (IsValidGamePath(candidate.Path))
+                    return candidate;
             }
 
             return null;
         }
 
-        private static IEnumerable<string> GetSteamRoots()
+        /// <summary>Returns the first valid path from an ordered candidate list (test seam).</summary>
+        internal static GameLocation PickFirstValid(IEnumerable<GameLocation> candidates)
         {
-            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var roots = new List<string>();
-
-            switch (PlatformInfo.Os)
+            foreach (var candidate in candidates)
             {
-                case OsKind.Windows:
-                    var pfx86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-                    var pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-                    roots.Add(Path.Combine(pfx86, "Steam"));
-                    roots.Add(Path.Combine(pf, "Steam"));
-                    foreach (var drive in new[] { "C", "D", "E", "F" })
-                        roots.Add(Path.Combine(drive + ":\\", "Steam"));
-                    break;
-
-                case OsKind.MacOs:
-                    roots.Add(Path.Combine(home, "Library", "Application Support", "Steam"));
-                    break;
-
-                case OsKind.Linux:
-                    roots.Add(Path.Combine(home, ".steam", "steam"));
-                    roots.Add(Path.Combine(home, ".steam", "root"));
-                    roots.Add(Path.Combine(home, ".local", "share", "Steam"));
-                    roots.Add(Path.Combine(home, ".var", "app", "com.valvesoftware.Steam", ".local", "share", "Steam"));
-                    break;
+                if (candidate != null && IsValidGamePath(candidate.Path))
+                    return candidate;
             }
 
-            return roots.Where(Directory.Exists).Distinct();
+            return null;
         }
 
-        /// <summary>Returns the Steam root plus any extra library roots from libraryfolders.vdf.</summary>
-        private static IEnumerable<string> GetLibraryPaths(string steamRoot)
+        internal static IEnumerable<GameLocation> BuildCandidateLocations(bool includeHeavyProbes)
         {
-            var results = new List<string> { steamRoot };
+            foreach (var path in SteamGameDiscovery.EnumerateAmongUsPaths())
+                yield return new GameLocation(path, SteamChannel);
 
-            var vdfCandidates = new[]
+            if (PlatformInfo.IsWindows)
             {
-                Path.Combine(steamRoot, "steamapps", "libraryfolders.vdf"),
-                Path.Combine(steamRoot, "config", "libraryfolders.vdf")
-            };
-
-            foreach (var vdf in vdfCandidates.Where(File.Exists))
-            {
-                try
-                {
-                    var text = File.ReadAllText(vdf);
-                    // Match "path"  "X:\\SteamLibrary" entries regardless of VDF version.
-                    foreach (Match m in Regex.Matches(text, "\"path\"\\s*\"([^\"]+)\""))
-                    {
-                        var path = m.Groups[1].Value.Replace("\\\\", "\\");
-                        if (Directory.Exists(path))
-                            results.Add(path);
-                    }
-                }
-                catch
-                {
-                }
+                foreach (var path in WindowsStoreGameDiscovery.EnumerateAmongUsPaths(includeHeavyProbes))
+                    yield return new GameLocation(path, EpicChannel);
             }
+        }
 
-            return results.Distinct();
+        /// <summary>Best guess at the channel for an arbitrary, already-known game path.</summary>
+        public static string GuessChannel(string path) => GamePathClassifier.GuessChannel(path);
+
+        /// <summary>Resolves the real MS Store package folder via Get-AppxPackage (Windows only).</summary>
+        internal static string TryGetAppxAmongUsPath() => WindowsStoreGameDiscovery.TryGetAppxAmongUsPath();
+
+        /// <summary>Best-effort check that BepInEx/mod files can be written into the game folder.</summary>
+        public static bool CanModifyGameFolder(string path)
+        {
+            if (!IsValidGamePath(path))
+                return false;
+            try
+            {
+                var probe = Path.Combine(path, ".smm-write-test");
+                File.WriteAllText(probe, "ok");
+                File.Delete(probe);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

@@ -1,0 +1,22 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SussyModManager.Views.PromptWindow"
+        Width="440" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BackgroundBrush}"
+        Icon="/Assets/sus.ico"
+        Title="SUSSYMODMANAGER">
+
+    <Border Classes="card" Margin="18" Padding="22">
+        <StackPanel Spacing="14">
+            <TextBlock x:Name="TitleText" Classes="h2" Text="Enter a value" />
+            <TextBlock x:Name="MessageText" Classes="muted" TextWrapping="Wrap" />
+            <TextBox x:Name="Input" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Classes="ghost" Content="Cancel" Click="OnCancel" />
+                <Button Classes="accent" Content="OK" Click="OnOk" IsDefault="True" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

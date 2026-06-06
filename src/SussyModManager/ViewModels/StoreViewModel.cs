@@ -32,7 +32,7 @@ namespace SussyModManager.ViewModels
             foreach (var entry in _env.Store.Entries.OrderByDescending(e => e.featured).ThenBy(e => e.name))
             {
                 // Hide pure dependency entries from the store grid; they install automatically.
-                if (string.Equals(entry.category, "Dependency", System.StringComparison.OrdinalIgnoreCase))
+                if (entry.IsDependency)
                     continue;
                 _all.Add(new ModCardViewModel(_env, entry));
             }

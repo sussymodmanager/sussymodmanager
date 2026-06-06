@@ -1,5 +1,8 @@
+using System;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
+using SussyModManager.Services;
 
 namespace SussyModManager.ViewModels
 {
@@ -10,7 +13,7 @@ namespace SussyModManager.ViewModels
         public ObservableCollection<PresetCardViewModel> Presets { get; } = new ObservableCollection<PresetCardViewModel>();
 
         public string Title => "Presets";
-        public string Subtitle => "Curated mod packs. Install everything in one click.";
+        public string Subtitle => "Curated and custom mod packs. Load or install a whole set in one click.";
 
         public PresetsViewModel(AppEnvironment env)
         {
@@ -20,24 +23,46 @@ namespace SussyModManager.ViewModels
 
         public void Reload()
         {
+            foreach (var existing in Presets)
+                existing.Changed -= OnPresetChanged;
+
             Presets.Clear();
             foreach (var preset in _env.Presets.GetAllPresets(_env.Config))
-                Presets.Add(new PresetCardViewModel(_env, preset));
+            {
+                var card = new PresetCardViewModel(_env, preset);
+                card.Changed += OnPresetChanged;
+                Presets.Add(card);
+            }
         }
 
+        private void OnPresetChanged(object sender, EventArgs e) => Reload();
+
         [RelayCommand]
-        private void SaveCurrentSelection()
+        private async Task SaveCurrentSelectionAsync()
         {
+            if (_env.Config.SelectedMods.Count == 0)
+            {
+                _env.SetStatus("Select some mods on the Installed page first, then save them as a preset.");
+                await DialogService.ShowInfoAsync("Nothing selected",
+                    "Tick the mods you want on the Installed page, then come back and save them as a preset.").ConfigureAwait(true);
+                return;
+            }
+
+            var name = await DialogService.PromptAsync("Save preset",
+                "Name this mod pack so you can switch to it later.", "My Pack").ConfigureAwait(true);
+            if (string.IsNullOrWhiteSpace(name))
+                return;
+
             var preset = new Core.Models.Preset
             {
-                Name = "My Pack",
+                Name = name,
                 Description = "Saved from your current selection.",
                 ModIds = new System.Collections.Generic.List<string>(_env.Config.SelectedMods)
             };
             _env.Config.UserPresets.Add(preset);
             _env.Save();
             Reload();
-            _env.SetStatus("Saved current selection as a preset.");
+            _env.SetStatus($"Saved \"{name}\" as a preset.");
         }
     }
 }

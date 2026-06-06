@@ -21,6 +21,8 @@
 
         <StackPanel Grid.Row="1" Spacing="6" Margin="0,16,0,12">
             <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button Classes="ghost" Content="Add custom .dll" Command="{Binding AddCustomDllCommand}"
+                        IsEnabled="{Binding !IsBusy}" />
                 <Button Classes="ghost" Content="Select all" Command="{Binding SelectAllCommand}" />
                 <Button Classes="ghost" Content="Clear" Command="{Binding ClearSelectionCommand}" />
                 <Rectangle Width="1" Fill="{DynamicResource CardBorderBrush}" Margin="4,2" />

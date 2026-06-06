@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SussyModManager.Core;
+using SussyModManager.Core.Helpers;
 using SussyModManager.Core.Models;
 using SussyModManager.Core.Platform;
 using SussyModManager.Core.Services;
@@ -17,18 +18,14 @@ namespace SussyModManager.ViewModels
         private readonly AppEnvironment _env;
 
         public ObservableCollection<ColorProfileViewModel> Profiles { get; } = new ObservableCollection<ColorProfileViewModel>();
-        public ObservableCollection<string> Channels { get; } = new ObservableCollection<string>
-        {
-            "Steam/Itch.io",
-            "Epic/MS Store"
-        };
+        public ObservableCollection<string> Channels { get; } =
+            new ObservableCollection<string>(GameChannels.All);
 
         [ObservableProperty] private string _amongUsPath;
         [ObservableProperty] private string _selectedChannel;
         [ObservableProperty] private bool _showBetaVersions;
         [ObservableProperty] private string _bepInExStatus;
         [ObservableProperty] private bool _isBusy;
-        [ObservableProperty] private string _customAccent = "#8B5CF6";
         [ObservableProperty] private string _platformLabel;
         [ObservableProperty] private bool _armDangerZone;
         [ObservableProperty] private bool _autoUpdateApp;
@@ -37,14 +34,17 @@ namespace SussyModManager.ViewModels
 
         private readonly AppUpdateService _appUpdates = new AppUpdateService();
 
+        public ThemeEditorViewModel Editor { get; } = new ThemeEditorViewModel();
+
         public string Title => "Settings";
         public string Subtitle => "Game location, channel and the all-important looks.";
 
         public SettingsViewModel(AppEnvironment env)
         {
             _env = env;
+            Editor.LoadFrom(env.Profiles.GetProfileOrDefault(env.Config.ActiveColorProfileId));
             AmongUsPath = env.Config.AmongUsPath;
-            SelectedChannel = env.Config.GameChannel ?? "Steam/Itch.io";
+            SelectedChannel = env.Config.GameChannel ?? GameChannels.Steam;
             ShowBetaVersions = env.Config.ShowBetaVersions;
             AutoUpdateApp = env.Config.AutoUpdateApp;
             AppVersionLabel = $"SUSSYMODMANAGER v{AppInfo.Version}";
@@ -105,19 +105,26 @@ namespace SussyModManager.ViewModels
 
         private void RefreshBepInEx()
         {
-            if (string.IsNullOrEmpty(AmongUsPath) || !BepInExInstaller.IsBepInExInstalled(AmongUsPath))
+            if (string.IsNullOrEmpty(AmongUsPath))
             {
                 BepInExStatus = "Not installed";
                 return;
             }
 
+            var issue = BepInExInstaller.GetReadinessIssue(AmongUsPath, SelectedChannel ?? _env.Config.GameChannel);
+            if (issue != null)
+            {
+                BepInExStatus = BepInExInstaller.IsBepInExInstalled(AmongUsPath)
+                    ? "Needs repair"
+                    : "Not installed";
+                return;
+            }
+
             var build = BepInExInstaller.GetInstalledBuild(AmongUsPath);
-            if (build == null)
-                BepInExStatus = $"Installed (unknown build - update to be.{BepInExInstaller.BuildNumber})";
-            else if (build.Value < BepInExInstaller.BuildNumber)
-                BepInExStatus = $"be.{build.Value} (update available: be.{BepInExInstaller.BuildNumber})";
-            else
-                BepInExStatus = $"be.{build.Value} (up to date)";
+            var target = BepInExInstaller.ResolveTarget(AmongUsPath, SelectedChannel ?? _env.Config.GameChannel);
+            BepInExStatus = build != null
+                ? $"be.{build.Value} ({target}) — ready"
+                : $"Installed ({target}) — ready";
         }
 
         partial void OnSelectedChannelChanged(string value)
@@ -135,18 +142,31 @@ namespace SussyModManager.ViewModels
         }
 
         [RelayCommand]
-        private void Detect()
+        private async Task Detect()
         {
-            var path = AmongUsLocator.Detect();
-            if (!string.IsNullOrEmpty(path))
+            if (IsBusy)
+                return;
+            IsBusy = true;
+            try
             {
-                AmongUsPath = path;
-                SavePath();
-                _env.SetStatus($"Found Among Us at {path}");
+                _env.SetStatus("Looking for Among Us...");
+                var found = await AppEnvironment.DetectGameAsync(includeHeavyProbes: true).ConfigureAwait(true);
+                if (found != null && !string.IsNullOrEmpty(found.Path))
+                {
+                    AmongUsPath = found.Path;
+                    if (!string.IsNullOrEmpty(found.Channel))
+                        SelectedChannel = found.Channel;
+                    SavePath();
+                    _env.SetStatus(_env.ApplyAutoDetectedGame(found));
+                }
+                else
+                {
+                    _env.SetStatus("Could not auto-detect Among Us. Enter the path manually.");
+                }
             }
-            else
+            finally
             {
-                _env.SetStatus("Could not auto-detect Among Us. Enter the path manually.");
+                IsBusy = false;
             }
         }
 
@@ -161,6 +181,15 @@ namespace SussyModManager.ViewModels
             _env.Config.AmongUsPath = AmongUsPath;
             _env.Save();
             RefreshBepInEx();
+
+            if (!string.IsNullOrWhiteSpace(AmongUsPath) && !AmongUsLocator.CanModifyGameFolder(AmongUsPath))
+            {
+                _env.SetStatus(
+                    "Saved path, but this folder may be read-only (common for some Microsoft Store installs). " +
+                    "Use the Xbox App / Game Pass copy under XboxGames, or Epic/Steam, for modding.");
+                return;
+            }
+
             _env.SetStatus("Saved Among Us path.");
         }
 
@@ -169,6 +198,7 @@ namespace SussyModManager.ViewModels
             if (string.IsNullOrEmpty(path))
                 return;
             AmongUsPath = path;
+            SelectedChannel = AmongUsLocator.GuessChannel(path);
             SavePath();
         }
 
@@ -270,55 +300,120 @@ namespace SussyModManager.ViewModels
             _env.Config.ActiveColorProfileId = vm.Id;
             _env.Save();
             ThemeService.Apply(vm.Profile);
+            Editor.LoadFrom(vm.Profile);
             foreach (var p in Profiles)
                 p.IsActive = string.Equals(p.Id, vm.Id, StringComparison.OrdinalIgnoreCase);
             _env.SetStatus($"Applied profile: {vm.Name}");
         }
 
-        /// <summary>Creates (or updates) a user profile that recolors the active profile's accent.</summary>
+        /// <summary>Pulls the editor's fields back to the currently active profile, discarding edits.</summary>
         [RelayCommand]
-        private void ApplyCustomAccent()
+        private void ResetEditor()
         {
-            var baseProfile = _env.Profiles.GetProfileOrDefault(_env.Config.ActiveColorProfileId);
-            var custom = new ColorProfile
-            {
-                Id = "custom-accent",
-                Name = "Custom Accent",
-                IsBuiltin = false,
-                Variant = baseProfile.Variant,
-                Accent = NormalizeHex(CustomAccent) ?? baseProfile.Accent,
-                AccentSecondary = NormalizeHex(CustomAccent) ?? baseProfile.AccentSecondary,
-                Background = baseProfile.Background,
-                Surface = baseProfile.Surface,
-                SurfaceElevated = baseProfile.SurfaceElevated,
-                CardBorder = baseProfile.CardBorder,
-                TextPrimary = baseProfile.TextPrimary,
-                TextMuted = baseProfile.TextMuted,
-                Success = baseProfile.Success,
-                Warning = baseProfile.Warning,
-                Danger = baseProfile.Danger,
-                Glow = baseProfile.Glow
-            };
-
-            _env.Profiles.UpsertUserProfile(custom);
-            _env.Config.ActiveColorProfileId = custom.Id;
-            _env.Save();
-            ThemeService.Apply(custom);
-            ReloadProfiles();
-            _env.SetStatus("Applied your custom accent.");
+            var active = _env.Profiles.GetProfileOrDefault(_env.Config.ActiveColorProfileId);
+            Editor.LoadFrom(active);
+            ThemeService.Apply(active);
+            _env.SetStatus("Reverted to the saved profile colors.");
         }
 
-        private static string NormalizeHex(string value)
+        [RelayCommand]
+        private async Task ExportThemeAsync()
         {
-            if (string.IsNullOrWhiteSpace(value))
-                return null;
-            value = value.Trim();
-            if (!value.StartsWith("#"))
-                value = "#" + value;
-            // Expand #RRGGBB to #FFRRGGBB so it always carries an alpha channel.
-            if (value.Length == 7)
-                value = "#FF" + value.Substring(1);
-            return value.Length == 9 ? value : value;
+            var active = _env.Profiles.GetProfileOrDefault(_env.Config.ActiveColorProfileId);
+            var profile = Editor.BuildProfile(active.Id, active.Name, active.IsBuiltin);
+            profile.Name = active.Name;
+
+            var path = await DialogService.SaveThemeFileAsync(active.Name).ConfigureAwait(true);
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            try
+            {
+                ThemeFile.Write(profile, path);
+                _env.SetStatus($"Exported theme to {path}");
+            }
+            catch (Exception ex)
+            {
+                await DialogService.ShowErrorAsync("Export failed", ex.Message).ConfigureAwait(true);
+            }
+        }
+
+        [RelayCommand]
+        private async Task ImportThemeAsync()
+        {
+            var path = await DialogService.PickThemeFileAsync().ConfigureAwait(true);
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            try
+            {
+                var profile = ThemeFile.Read(path);
+                if (profile == null)
+                {
+                    await DialogService.ShowErrorAsync("Import failed", "That file doesn't look like a theme.").ConfigureAwait(true);
+                    return;
+                }
+
+                profile.Id = "custom-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                profile.IsBuiltin = false;
+                if (string.IsNullOrWhiteSpace(profile.Name))
+                    profile.Name = System.IO.Path.GetFileNameWithoutExtension(path);
+
+                _env.Profiles.UpsertUserProfile(profile);
+                _env.Config.ActiveColorProfileId = profile.Id;
+                _env.Save();
+                ThemeService.Apply(profile);
+                Editor.LoadFrom(profile);
+                ReloadProfiles();
+                _env.SetStatus($"Imported theme \"{profile.Name}\".");
+            }
+            catch (Exception ex)
+            {
+                await DialogService.ShowErrorAsync("Import failed", ex.Message).ConfigureAwait(true);
+            }
+        }
+
+        [RelayCommand]
+        private async Task SaveCustomThemeAsync()
+        {
+            var name = await DialogService.PromptAsync("Save theme",
+                "Name your custom color theme.", "My Theme").ConfigureAwait(true);
+            if (string.IsNullOrWhiteSpace(name))
+                return;
+
+            var id = "custom-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+            var profile = Editor.BuildProfile(id, name);
+            _env.Profiles.UpsertUserProfile(profile);
+            _env.Config.ActiveColorProfileId = profile.Id;
+            _env.Save();
+            ThemeService.Apply(profile);
+            ReloadProfiles();
+            _env.SetStatus($"Saved and applied theme \"{name}\".");
+        }
+
+        [RelayCommand]
+        private async Task DeleteProfileAsync(ColorProfileViewModel vm)
+        {
+            if (vm == null || vm.IsBuiltin)
+                return;
+            if (!await DialogService.ConfirmAsync("Delete theme",
+                    $"Delete the custom theme \"{vm.Name}\"?",
+                    yes: "Delete", no: "Cancel", danger: true).ConfigureAwait(true))
+                return;
+
+            _env.Profiles.DeleteUserProfile(vm.Id);
+
+            // If we deleted the active profile, fall back to the default.
+            if (string.Equals(_env.Config.ActiveColorProfileId, vm.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                _env.Config.ActiveColorProfileId = "sus-default";
+                var fallback = _env.Profiles.GetProfileOrDefault(_env.Config.ActiveColorProfileId);
+                ThemeService.Apply(fallback);
+                Editor.LoadFrom(fallback);
+            }
+            _env.Save();
+            ReloadProfiles();
+            _env.SetStatus($"Deleted theme \"{vm.Name}\".");
         }
     }
 }

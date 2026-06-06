@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using SussyModManager.Core.Models;
 using SussyModManager.Core.Platform;
 
 namespace SussyModManager.Core.Helpers
@@ -36,6 +38,15 @@ namespace SussyModManager.Core.Helpers
         /// <summary>Reads a data file: cached-remote first, then bundled. Returns null if missing.</summary>
         public static string Read(string fileName)
         {
+            var cached = ReadCached(fileName);
+            if (!string.IsNullOrWhiteSpace(cached))
+                return cached;
+            return ReadBundled(fileName);
+        }
+
+        /// <summary>Reads only the AppData store copy (from a prior remote refresh).</summary>
+        public static string ReadCached(string fileName)
+        {
             try
             {
                 var local = Path.Combine(StoreDir, fileName);
@@ -50,6 +61,12 @@ namespace SussyModManager.Core.Helpers
             {
             }
 
+            return null;
+        }
+
+        /// <summary>Reads only the copy bundled next to the executable.</summary>
+        public static string ReadBundled(string fileName)
+        {
             foreach (var candidate in new[]
             {
                 Path.Combine(PlatformInfo.AppBaseDirectory, fileName),
@@ -67,6 +84,61 @@ namespace SussyModManager.Core.Helpers
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Merges bundled data into the AppData store so stale remote copies cannot hide new
+        /// shipped mods. Safe to call on every launch.
+        /// </summary>
+        public static void EnsureBundledStoreMerged()
+        {
+            try
+            {
+                MergeModCacheStore();
+            }
+            catch
+            {
+            }
+        }
+
+        private static void MergeModCacheStore()
+        {
+            var bundled = ReadBundled("mod-cache.json");
+            if (string.IsNullOrWhiteSpace(bundled))
+                return;
+
+            var cached = ReadCached("mod-cache.json");
+            var merged = MergeModCacheJson(bundled, cached);
+            if (string.IsNullOrWhiteSpace(merged))
+                return;
+
+            if (string.Equals(cached, merged, StringComparison.Ordinal))
+                return;
+
+            File.WriteAllText(Path.Combine(StoreDir, "mod-cache.json"), merged);
+        }
+
+        internal static string MergeModCacheJson(string bundledJson, string storeJson)
+        {
+            var merged = new Dictionary<string, ModCacheEntry>(StringComparer.OrdinalIgnoreCase);
+
+            void Add(string json)
+            {
+                var cache = Json.Deserialize<ModCache>(json);
+                if (cache?.mods == null)
+                    return;
+                foreach (var kvp in cache.mods)
+                    merged[kvp.Key] = kvp.Value;
+            }
+
+            Add(bundledJson);
+            if (!string.IsNullOrWhiteSpace(storeJson))
+                Add(storeJson);
+
+            if (merged.Count == 0)
+                return null;
+
+            return Json.Serialize(new ModCache { mods = merged });
         }
 
         /// <summary>
@@ -91,8 +163,17 @@ namespace SussyModManager.Core.Helpers
                     if (string.IsNullOrWhiteSpace(json))
                         return;
 
-                    // Make sure it's valid JSON before trusting it.
                     using (JsonDocument.Parse(json)) { }
+
+                    if (string.Equals(name, "builtin-presets.json", StringComparison.OrdinalIgnoreCase))
+                        return;
+
+                    if (string.Equals(name, "mod-cache.json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var bundled = ReadBundled(name);
+                        if (!string.IsNullOrWhiteSpace(bundled))
+                            json = MergeModCacheJson(bundled, json);
+                    }
 
                     var dest = Path.Combine(StoreDir, name);
                     var existing = File.Exists(dest) ? File.ReadAllText(dest) : null;
@@ -104,7 +185,6 @@ namespace SussyModManager.Core.Helpers
                 }
                 catch
                 {
-                    // Offline / 404 / bad JSON: keep whatever copy we already have.
                 }
             });
 

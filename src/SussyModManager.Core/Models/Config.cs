@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading;
 using SussyModManager.Core.Helpers;
 using SussyModManager.Core.Platform;
+using SussyModManager.Core.Services;
 
 namespace SussyModManager.Core.Models
 {
@@ -23,10 +24,19 @@ namespace SussyModManager.Core.Models
         public string ActiveColorProfileId { get; set; } = "sus-default";
 
         public bool FirstLaunchWizardCompleted { get; set; }
-        public string GameChannel { get; set; } = "Steam/Itch.io";
+        public string GameChannel { get; set; } = GameChannels.Steam;
 
         // True once we've attempted importing legacy BeanModManager data.
         public bool LegacyImportAttempted { get; set; }
+
+        // True while the background BeanModManager mod-file copy is still running.
+        public bool LegacyModsCopyPending { get; set; }
+
+        /// <summary>
+        /// Optional path to a working Among Us install whose BepInEx/interop folder is copied into
+        /// the live game before launch (fixes Reactor after Steam updates regenerate interop).
+        /// </summary>
+        public string InteropReferencePath { get; set; }
 
         private static readonly SemaphoreSlim SaveLock = new SemaphoreSlim(1, 1);
 

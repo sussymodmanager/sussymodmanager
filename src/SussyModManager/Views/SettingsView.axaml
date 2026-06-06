@@ -47,6 +47,8 @@
                         <Button Grid.Column="2" Classes="ghost" Content="Install / Update BepInEx"
                                 Command="{Binding InstallBepInExCommand}" IsEnabled="{Binding !IsBusy}" />
                     </Grid>
+                    <TextBlock Classes="muted" FontSize="12"
+                               Text="Uses BepInEx be.752 — the same build bundled with Town of Us Mira (not bleeding-edge betas)." />
 
                     <TextBlock Classes="muted" FontSize="12"
                                Text="{Binding PlatformLabel, StringFormat='Running on {0}. On Linux/macOS the game launches through Steam (Proton/Wine).'}" />
@@ -68,35 +70,113 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:ColorProfileViewModel">
-                                <Button Classes="ghost" Margin="0,0,12,12" Padding="12"
-                                        Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).ApplyProfileCommand}"
-                                        CommandParameter="{Binding}">
-                                    <StackPanel Spacing="8" Width="150">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <Border Width="26" Height="26" CornerRadius="6" Background="{Binding AccentSwatch}" />
-                                            <Border Width="26" Height="26" CornerRadius="6" Background="{Binding SecondarySwatch}" />
-                                            <Border Width="26" Height="26" CornerRadius="6" Background="{Binding SurfaceSwatch}" />
-                                            <Border Width="26" Height="26" CornerRadius="6" Background="{Binding BackgroundSwatch}" />
+                                <Grid Margin="0,0,12,12">
+                                    <Button Classes="ghost" Padding="12"
+                                            Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).ApplyProfileCommand}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Spacing="8" Width="150">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <Border Width="26" Height="26" CornerRadius="6" Background="{Binding AccentSwatch}" />
+                                                <Border Width="26" Height="26" CornerRadius="6" Background="{Binding SecondarySwatch}" />
+                                                <Border Width="26" Height="26" CornerRadius="6" Background="{Binding SurfaceSwatch}" />
+                                                <Border Width="26" Height="26" CornerRadius="6" Background="{Binding BackgroundSwatch}" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                <TextBlock Text="●" Foreground="{DynamicResource SuccessBrush}"
+                                                           IsVisible="{Binding IsActive}" />
+                                            </StackPanel>
                                         </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
-                                            <TextBlock Text="●" Foreground="{DynamicResource SuccessBrush}"
-                                                       IsVisible="{Binding IsActive}" />
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Button>
+                                    </Button>
+                                    <Button Classes="ghost" Content="✕" Padding="6,2" FontSize="11"
+                                            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0"
+                                            IsVisible="{Binding !IsBuiltin}"
+                                            ToolTip.Tip="Delete this custom theme"
+                                            Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).DeleteProfileCommand}"
+                                            CommandParameter="{Binding}" />
+                                </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="Custom accent (hex)" Classes="muted" />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBox Text="{Binding CustomAccent}" Width="160" Watermark="#8B5CF6" />
-                            <Button Classes="accent" Content="Apply accent" Command="{Binding ApplyCustomAccentCommand}" />
+                    <!-- Custom theme editor -->
+                    <Border Classes="card" Background="{DynamicResource SurfaceElevatedBrush}">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="Custom theme" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                                       Text="Pick the four swatch colors. Everything else is filled in for you. Changes apply live." />
+
+                            <CheckBox Content="Light mode" IsChecked="{Binding Editor.IsLight}"
+                                      Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0"
+                                            Background="{Binding Editor.Accent.Swatch}" VerticalAlignment="Bottom" />
+                                    <StackPanel Grid.Column="1" Spacing="3">
+                                        <TextBlock Text="{Binding Editor.Accent.Label}" Classes="muted" FontSize="12" />
+                                        <TextBox Text="{Binding Editor.Accent.Value}" Watermark="{Binding Editor.Accent.Watermark}" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0"
+                                            Background="{Binding Editor.AccentSecondary.Swatch}" VerticalAlignment="Bottom" />
+                                    <StackPanel Grid.Column="1" Spacing="3">
+                                        <TextBlock Text="{Binding Editor.AccentSecondary.Label}" Classes="muted" FontSize="12" />
+                                        <TextBox Text="{Binding Editor.AccentSecondary.Value}" Watermark="{Binding Editor.AccentSecondary.Watermark}" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0"
+                                            Background="{Binding Editor.Surface.Swatch}" VerticalAlignment="Bottom" />
+                                    <StackPanel Grid.Column="1" Spacing="3">
+                                        <TextBlock Text="{Binding Editor.Surface.Label}" Classes="muted" FontSize="12" />
+                                        <TextBox Text="{Binding Editor.Surface.Value}" Watermark="{Binding Editor.Surface.Watermark}" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0"
+                                            Background="{Binding Editor.Background.Swatch}" VerticalAlignment="Bottom" />
+                                    <StackPanel Grid.Column="1" Spacing="3">
+                                        <TextBlock Text="{Binding Editor.Background.Label}" Classes="muted" FontSize="12" />
+                                        <TextBox Text="{Binding Editor.Background.Value}" Watermark="{Binding Editor.Background.Watermark}" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+
+                            <CheckBox Content="Edit all colors" IsChecked="{Binding Editor.ShowAdvanced}"
+                                      Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                            <ItemsControl ItemsSource="{Binding Editor.AdvancedTokens}"
+                                          IsVisible="{Binding Editor.ShowAdvanced}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:ThemeColorTokenViewModel">
+                                        <StackPanel Width="200" Margin="0,0,16,10" Spacing="3">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Border Width="20" Height="20" CornerRadius="4" Background="{Binding Swatch}" />
+                                                <TextBlock Text="{Binding Label}" Classes="muted" FontSize="12" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <TextBox Text="{Binding Value}" Watermark="{Binding Watermark}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Classes="accent" Content="Save as theme" Command="{Binding SaveCustomThemeCommand}" />
+                                <Button Classes="ghost" Content="Revert" Command="{Binding ResetEditorCommand}" />
+                                <Button Classes="ghost" Content="Export" Command="{Binding ExportThemeCommand}" />
+                                <Button Classes="ghost" Content="Import" Command="{Binding ImportThemeCommand}" />
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
+                    </Border>
 
                     <!-- Live preview -->
                     <Border Classes="card" Background="{DynamicResource SurfaceElevatedBrush}">

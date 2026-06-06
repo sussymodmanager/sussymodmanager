@@ -75,27 +75,54 @@ namespace SussyModManager.Core.Services
             }
         }
 
+        /// <summary>Test hook: replaces the loaded registry with inline JSON.</summary>
+        internal void LoadRegistryFromJson(string json)
+        {
+            _entries.Clear();
+            _entryById.Clear();
+            RegistryLoaded = false;
+
+            var registry = Json.Deserialize<ModRegistry>(json);
+            if (registry?.mods == null || registry.mods.Count == 0)
+                return;
+
+            foreach (var entry in registry.mods)
+            {
+                _entries.Add(entry);
+                _entryById[entry.id] = entry;
+            }
+            RegistryLoaded = true;
+        }
+
         private void LoadCache()
         {
             try
             {
-                var json = DataStore.Read("mod-cache.json");
-                if (string.IsNullOrEmpty(json) && !string.IsNullOrEmpty(_cacheUrl))
-                {
-                    try { json = Http.GetStringAsync(_cacheUrl).GetAwaiter().GetResult(); }
-                    catch { json = null; }
-                }
+                MergeCacheJson(DataStore.ReadBundled("mod-cache.json"));
+                MergeCacheJson(DataStore.ReadCached("mod-cache.json"));
 
-                var cache = Json.Deserialize<ModCache>(json);
-                if (cache?.mods != null)
+                if (_cache.Count == 0 && !string.IsNullOrEmpty(_cacheUrl))
                 {
-                    foreach (var kvp in cache.mods)
-                        _cache[kvp.Key] = kvp.Value;
+                    try { MergeCacheJson(Http.GetStringAsync(_cacheUrl).GetAwaiter().GetResult()); }
+                    catch { }
                 }
             }
             catch
             {
             }
+        }
+
+        private void MergeCacheJson(string json)
+        {
+            if (string.IsNullOrEmpty(json))
+                return;
+
+            var cache = Json.Deserialize<ModCache>(json);
+            if (cache?.mods == null)
+                return;
+
+            foreach (var kvp in cache.mods)
+                _cache[kvp.Key] = kvp.Value;
         }
 
         public IReadOnlyList<ModRegistryEntry> Entries => _entries;

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using SussyModManager.Core.Helpers;
 using SussyModManager.Core.Models;
 
 namespace SussyModManager.Core.Services
@@ -24,6 +25,13 @@ namespace SussyModManager.Core.Services
         public bool HasUpdate { get; set; }
     }
 
+    public sealed class ModReconcileResult
+    {
+        public List<string> RemovedFromInstalled { get; } = new List<string>();
+        public List<string> RemovedFromSelection { get; } = new List<string>();
+        public bool Changed { get; set; }
+    }
+
     /// <summary>
     /// High-level orchestration used by the UI: installing/uninstalling mods (with dependency
     /// resolution), activating the selected set into the game, installing presets, and launching.
@@ -31,6 +39,10 @@ namespace SussyModManager.Core.Services
     public class ModManager
     {
         private readonly Config _config;
+        private readonly object _resyncLock = new object();
+        private readonly SemaphoreSlim _resyncGate = new SemaphoreSlim(1, 1);
+        private CancellationTokenSource _resyncDebounceCts;
+
         public ModStore Store { get; }
         public ModDownloader Downloader { get; }
         public ModInstaller Installer { get; }
@@ -57,6 +69,213 @@ namespace SussyModManager.Core.Services
         public bool IsInstalled(string modId) =>
             _config.InstalledMods.Any(m => string.Equals(m.Id, modId, StringComparison.OrdinalIgnoreCase));
 
+        /// <summary>True when the mod's storage folder has DLLs or a copyable mod tree.</summary>
+        public bool HasLaunchableFiles(string modId)
+        {
+            if (string.IsNullOrWhiteSpace(modId))
+                return false;
+
+            var storagePath = Path.Combine(_config.ModsFolder, modId);
+            if (!Directory.Exists(storagePath))
+                return false;
+
+            if (Directory.Exists(Path.Combine(storagePath, "BepInEx")))
+                return true;
+
+            if (Directory.GetFiles(storagePath, "*.dll", SearchOption.TopDirectoryOnly).Length > 0)
+                return true;
+
+            return Directory.GetDirectories(storagePath).Any(sub =>
+                Directory.GetFiles(sub, "*.dll", SearchOption.AllDirectories).Length > 0);
+        }
+
+        /// <summary>
+        /// Drops installed/selected entries whose files are missing (e.g. interrupted legacy import).
+        /// </summary>
+        public ModReconcileResult ReconcileInstalledMods()
+        {
+            var result = new ModReconcileResult();
+
+            foreach (var mod in _config.InstalledMods.ToList())
+            {
+                if (HasLaunchableFiles(mod.Id))
+                    continue;
+
+                result.RemovedFromInstalled.Add(mod.Name ?? mod.Id);
+                _config.InstalledMods.RemoveAll(m => string.Equals(m.Id, mod.Id, StringComparison.OrdinalIgnoreCase));
+                result.Changed = true;
+            }
+
+            foreach (var modId in _config.SelectedMods.ToList())
+            {
+                if (IsInstalled(modId) && HasLaunchableFiles(modId))
+                    continue;
+
+                result.RemovedFromSelection.Add(Store.GetEntry(modId)?.name ?? modId);
+                _config.SelectedMods.RemoveAll(id => string.Equals(id, modId, StringComparison.OrdinalIgnoreCase));
+                result.Changed = true;
+            }
+
+            PruneDependencySelections();
+
+            if (result.Changed)
+                _config.Save();
+
+            return result;
+        }
+
+        /// <summary>Blocks launch when the selection references mods that are not on disk.</summary>
+        public InstallResult ValidateBeforeLaunch()
+        {
+            var reconcile = ReconcileInstalledMods();
+            var result = new InstallResult { Success = true };
+
+            if (reconcile.RemovedFromInstalled.Count > 0)
+            {
+                result.Warnings.Add(
+                    "Removed missing mods from your library: " + string.Join(", ", reconcile.RemovedFromInstalled));
+            }
+
+            if (reconcile.RemovedFromSelection.Count > 0)
+            {
+                result.Success = false;
+                result.Message =
+                    "Some mods you selected for launch are missing from disk. Reinstall them, add them again, or change your selection.";
+                result.Warnings.AddRange(reconcile.RemovedFromSelection);
+                return result;
+            }
+
+            var launchSet = GetLaunchModIds();
+            var missing = launchSet
+                .Where(id => !HasLaunchableFiles(id))
+                .Select(id => Store.GetEntry(id)?.name ?? id)
+                .ToList();
+
+            if (missing.Count > 0)
+            {
+                result.Success = false;
+                result.Message =
+                    "Some mods selected for launch are missing from disk. Reinstall them or uncheck Launch, then try again.";
+                result.Warnings.AddRange(missing.Select(n => n));
+                return result;
+            }
+
+            if (!string.IsNullOrEmpty(_config.AmongUsPath) && LaunchSetNeedsReactor(launchSet))
+            {
+                EnsureWorkingInterop();
+
+                var interopIssue = BepInExInteropDiagnostics.GetPreLaunchReactorIssue(_config.AmongUsPath, true);
+                if (interopIssue != null)
+                {
+                    result.Success = false;
+                    result.Message = interopIssue;
+                    return result;
+                }
+
+                var logIssue = BepInExInteropDiagnostics.GetLastLogReactorFailure(_config.AmongUsPath);
+                if (logIssue != null)
+                {
+                    result.Warnings.Add(logIssue);
+                }
+            }
+
+            return result;
+        }
+
+        private bool LaunchSetNeedsReactor(IEnumerable<string> launchSet) =>
+            launchSet.Any(id =>
+            {
+                if (string.Equals(id, "Reactor", StringComparison.OrdinalIgnoreCase))
+                    return true;
+                return Store.GetDependencies(id).Any(d =>
+                    string.Equals(d.modId, "Reactor", StringComparison.OrdinalIgnoreCase));
+            });
+
+        /// <summary>Imports a local BepInEx plugin DLL into the mod library.</summary>
+        public InstallResult ImportCustomDll(string dllPath)
+        {
+            var result = new InstallResult();
+            if (string.IsNullOrWhiteSpace(dllPath) || !File.Exists(dllPath))
+            {
+                result.Message = "That file does not exist.";
+                return result;
+            }
+
+            if (!dllPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            {
+                result.Message = "Pick a .dll file.";
+                return result;
+            }
+
+            var fileName = Path.GetFileName(dllPath);
+            var baseName = Path.GetFileNameWithoutExtension(fileName);
+            var id = AllocateCustomModId(baseName);
+            var storagePath = Path.Combine(_config.ModsFolder, id);
+
+            try
+            {
+                if (Directory.Exists(storagePath))
+                {
+                    try { Directory.Delete(storagePath, true); } catch { }
+                }
+                Directory.CreateDirectory(storagePath);
+                File.Copy(dllPath, Path.Combine(storagePath, fileName), true);
+            }
+            catch (Exception ex)
+            {
+                result.Message = $"Could not copy DLL: {ex.Message}";
+                return result;
+            }
+
+            _config.InstalledMods.RemoveAll(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase));
+            _config.InstalledMods.Add(new InstalledMod
+            {
+                Id = id,
+                Name = baseName,
+                Version = "custom",
+                IsCustom = true
+            });
+
+            if (!_config.SelectedMods.Contains(id, StringComparer.OrdinalIgnoreCase))
+                _config.SelectedMods.Add(id);
+            PruneDependencySelections();
+            _config.Save();
+
+            result.Success = true;
+            result.Message = $"Added {baseName}.dll to your library and selected it for launch.";
+            return result;
+        }
+
+        private string AllocateCustomModId(string baseName)
+        {
+            var slug = SanitizeModId(baseName);
+            if (string.IsNullOrEmpty(slug))
+                slug = "plugin";
+
+            var id = "custom-" + slug;
+            var n = 2;
+            while (_config.InstalledMods.Any(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase)))
+            {
+                id = $"custom-{slug}-{n}";
+                n++;
+            }
+            return id;
+        }
+
+        private static string SanitizeModId(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            var chars = value
+                .Select(c => char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : '-')
+                .ToArray();
+            var slug = new string(chars).Trim('-');
+            while (slug.Contains("--"))
+                slug = slug.Replace("--", "-");
+            return slug.Length > 48 ? slug.Substring(0, 48).Trim('-') : slug;
+        }
+
         /// <summary>Chooses the best version for the configured game channel.</summary>
         public ModVersion PickVersion(Mod mod)
         {
@@ -71,7 +290,7 @@ namespace SussyModManager.Core.Services
                     candidates = stable;
             }
 
-            var channel = _config.GameChannel ?? "Steam/Itch.io";
+            var channel = _config.GameChannel ?? GameChannels.Steam;
             return candidates.FirstOrDefault(v => string.Equals(v.GameVersion, channel, StringComparison.OrdinalIgnoreCase))
                 ?? candidates.FirstOrDefault(v => string.Equals(v.GameVersion, "DLL Only", StringComparison.OrdinalIgnoreCase))
                 ?? candidates.FirstOrDefault(v => string.Equals(v.GameVersion, "Thunderstore", StringComparison.OrdinalIgnoreCase))
@@ -79,7 +298,8 @@ namespace SussyModManager.Core.Services
                 ?? candidates.First();
         }
 
-        public async Task<InstallResult> InstallModAsync(string modId, ModVersion version = null, CancellationToken ct = default)
+        public async Task<InstallResult> InstallModAsync(string modId, ModVersion version = null, CancellationToken ct = default,
+            bool forceRefresh = false)
         {
             var result = new InstallResult();
             var entry = Store.GetEntry(modId);
@@ -109,9 +329,24 @@ namespace SussyModManager.Core.Services
             }
 
             if (version == null || string.IsNullOrEmpty(version.DownloadUrl))
+                version = DirectDownloadResolver.TryResolve(entry);
+
+            if (version == null || string.IsNullOrEmpty(version.DownloadUrl))
             {
                 result.Message = $"No downloadable version found for {mod.Name}.";
                 return result;
+            }
+
+            if (!forceRefresh && IsInstalled(modId) && HasLaunchableFiles(modId))
+            {
+                var existing = _config.InstalledMods.FirstOrDefault(m =>
+                    string.Equals(m.Id, modId, StringComparison.OrdinalIgnoreCase));
+                if (existing != null && VersionsMatch(existing, version))
+                {
+                    result.Success = true;
+                    result.Message = $"{mod.Name} already installed ({FormatVersion(existing)}).";
+                    return result;
+                }
             }
 
             // Install mod-to-mod dependencies first (registry entries referenced by modId).
@@ -173,6 +408,11 @@ namespace SussyModManager.Core.Services
             _config.InstalledMods.RemoveAll(m => string.Equals(m.Id, modId, StringComparison.OrdinalIgnoreCase));
             _config.SelectedMods.RemoveAll(id => string.Equals(id, modId, StringComparison.OrdinalIgnoreCase));
             _config.Save();
+
+            // Strip the removed mod (and any now-orphaned shared dependency like Reactor) out of the
+            // live game folder, so it doesn't keep loading - and keep blocking normal lobbies -
+            // after the user thinks they've removed it.
+            RequestResyncActivePlugins();
             Report($"Uninstalled {modId}.");
         }
 
@@ -227,11 +467,7 @@ namespace SussyModManager.Core.Services
         {
             await InstallPresetAsync(preset, ct).ConfigureAwait(false);
 
-            // Launch the preset "as is": select exactly its mods (plus their dependencies).
-            var set = ExpandWithDependencies(preset.ModIds).Where(IsInstalled).ToList();
-            _config.SelectedMods.Clear();
-            _config.SelectedMods.AddRange(set);
-            _config.Save();
+            SetLaunchSelection(preset.ModIds, syncPlugins: false);
 
             await PlayAsync(ct).ConfigureAwait(false);
         }
@@ -258,15 +494,7 @@ namespace SussyModManager.Core.Services
                 }
             }
 
-            // Select the whole pack for launch, including its dependencies so they show as
-            // enabled in the UI and are guaranteed to be copied into the game.
-            var toSelect = ExpandWithDependencies(preset.ModIds);
-            foreach (var modId in toSelect)
-            {
-                if (IsInstalled(modId) && !_config.SelectedMods.Contains(modId, StringComparer.OrdinalIgnoreCase))
-                    _config.SelectedMods.Add(modId);
-            }
-            _config.Save();
+            SetLaunchSelection(preset.ModIds, syncPlugins: false);
 
             aggregate.Message = aggregate.Success
                 ? $"{preset.Name} installed and selected."
@@ -279,35 +507,122 @@ namespace SussyModManager.Core.Services
             if (string.IsNullOrEmpty(_config.AmongUsPath))
                 return;
 
-            var installed = BepInExInstaller.IsBepInExInstalled(_config.AmongUsPath);
-            var needsUpdate = BepInExInstaller.NeedsUpdate(_config.AmongUsPath);
-
-            if (installed && !needsUpdate)
+            if (BepInExInstaller.IsSatisfied(_config.AmongUsPath, _config.GameChannel))
                 return;
 
-            Report(needsUpdate ? "Updating outdated BepInEx..." : "Installing BepInEx...");
-            await BepInEx.InstallBepInExAsync(_config.AmongUsPath, _config.GameChannel,
-                new Progress<int>(p => Report($"BepInEx... {p}%")), ct, force: needsUpdate).ConfigureAwait(false);
+            if (TryDeployTownOfUsBepInExStack())
+                return;
+
+            var replacing = BepInExInstaller.IsBepInExInstalled(_config.AmongUsPath);
+            Report(replacing ? "Repairing BepInEx..." : "Installing BepInEx...");
+            var ok = await BepInEx.InstallBepInExAsync(_config.AmongUsPath, _config.GameChannel,
+                new Progress<int>(p => Report($"BepInEx... {p}%")), ct, force: replacing).ConfigureAwait(false);
+            if (!ok)
+                throw new InvalidOperationException(BepInExInstaller.GetReadinessIssue(_config.AmongUsPath, _config.GameChannel)
+                    ?? "BepInEx installation failed.");
         }
 
         /// <summary>Force a clean (re)install of the shipped BepInEx build.</summary>
-        public Task<bool> ReinstallBepInExAsync(CancellationToken ct = default) =>
-            BepInEx.InstallBepInExAsync(_config.AmongUsPath, _config.GameChannel,
-                new Progress<int>(p => Report($"BepInEx... {p}%")), ct, force: true);
+        public async Task<bool> ReinstallBepInExAsync(CancellationToken ct = default)
+        {
+            if (TryDeployTownOfUsBepInExStack())
+                return true;
+
+            return await BepInEx.InstallBepInExAsync(_config.AmongUsPath, _config.GameChannel,
+                new Progress<int>(p => Report($"BepInEx... {p}%")), ct, force: true).ConfigureAwait(false);
+        }
+
+        /// <summary>Deploy the exact BepInEx tree bundled inside the installed TOU Mira zip.</summary>
+        private bool TryDeployTownOfUsBepInExStack()
+        {
+            if (string.IsNullOrEmpty(_config.AmongUsPath) || !IsInstalled("TownOfUs"))
+                return false;
+
+            var pack = Path.Combine(_config.ModsFolder, "TownOfUs");
+            if (!Directory.Exists(Path.Combine(pack, "BepInEx", "core")))
+                return false;
+
+            Report("Installing BepInEx from Town of Us Mira pack...");
+            return BepInExInstaller.TryDeployFromModPack(pack, _config.AmongUsPath, _config.GameChannel);
+        }
 
         /// <summary>Copies the currently selected mods into the game, ready to launch.</summary>
-        public async Task ActivateSelectedAsync(CancellationToken ct = default)
+        public async Task ActivateSelectedAsync(CancellationToken ct = default, bool strict = false)
         {
             if (string.IsNullOrEmpty(_config.AmongUsPath))
                 throw new InvalidOperationException("Among Us path is not set.");
 
             await EnsureBepInExAsync(ct).ConfigureAwait(false);
+            CopySelectedModsIntoGame(strict);
+            EnsureWorkingInterop();
+        }
 
-            // Always copy the dependencies of every selected mod, even if the user didn't tick
-            // them (e.g. MiraAPI, Reactor). This is what makes a mod like TOU Mira "just work".
+        /// <summary>
+        /// Copies a known-good BepInEx/interop folder into the live game so Reactor 2.5.0 can load.
+        /// </summary>
+        public void EnsureWorkingInterop()
+        {
+            if (string.IsNullOrEmpty(_config.AmongUsPath))
+                return;
+            if (InteropReference.HasWorkingInterop(_config.AmongUsPath))
+                return;
+
+            var cacheRoot = InteropReference.GetCachedInteropPath(_config.DataPath);
+            if (InteropReference.TrySeedFromCache(_config.AmongUsPath, cacheRoot))
+            {
+                Report("Restored Il2Cpp interop from manager cache.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_config.InteropReferencePath) ||
+                !Directory.Exists(_config.InteropReferencePath))
+                return;
+
+            if (InteropReference.TrySeedInterop(_config.AmongUsPath, _config.InteropReferencePath, cacheRoot))
+                Report("Seeded Il2Cpp interop from your reference Among Us install.");
+        }
+
+        /// <summary>Persists interop from a working install into the manager cache.</summary>
+        public void CacheInteropReference(string referenceAmongUsPath)
+        {
+            _config.InteropReferencePath = referenceAmongUsPath;
+            var cacheRoot = InteropReference.GetCachedInteropPath(_config.DataPath);
+            InteropReference.CacheFromReference(referenceAmongUsPath, cacheRoot);
+            _config.Save();
+        }
+
+        /// <summary>
+        /// Replaces the launch selection, prunes dependency-category mods, persists, and optionally
+        /// rebuilds the live plugins folder. Single entry point for preset apply, mod toggles, etc.
+        /// </summary>
+        public void SetLaunchSelection(IEnumerable<string> modIds, bool syncPlugins = false)
+        {
+            var ids = modIds == null ? new List<string>() : modIds.ToList();
+            _config.SelectedMods.Clear();
+            foreach (var modId in ids)
+            {
+                if (!string.IsNullOrEmpty(modId) && IsInstalled(modId) && HasLaunchableFiles(modId))
+                    _config.SelectedMods.Add(modId);
+            }
+
+            PruneDependencySelections();
+            _config.Save();
+
+            if (syncPlugins)
+                RequestResyncActivePlugins();
+        }
+
+        /// <summary>
+        /// Cleans the plugins folder and copies in exactly the selected mods plus their dependencies
+        /// (e.g. MiraAPI, Reactor) - this is what makes a mod like TOU Mira "just work". Assumes
+        /// BepInEx is already installed; pure file work, safe to call synchronously.
+        /// </summary>
+        internal void CopySelectedModsIntoGame(bool strict = false)
+        {
             var launchSet = ExpandWithDependencies(_config.SelectedMods)
-                .Where(IsInstalled)
+                .Where(id => IsInstalled(id) && HasLaunchableFiles(id))
                 .ToList();
+            launchSet = OrderForLaunchCopy(launchSet);
 
             var keepFiles = launchSet
                 .SelectMany(id => Store.GetKeepFiles(id))
@@ -315,15 +630,42 @@ namespace SussyModManager.Core.Services
                 .Select(k => k.Replace("plugins/", "").Replace("plugins\\", "").TrimStart('/', '\\'))
                 .ToList();
 
+            var useTouAnchor = launchSet.Any(id =>
+                string.Equals(id, "TownOfUs", StringComparison.OrdinalIgnoreCase) && IsInstalled(id));
+
             Report("Preparing plugins folder...");
             Installer.CleanPluginsFolder(_config.AmongUsPath, keepFiles);
+
+            var failures = new List<string>();
+            if (useTouAnchor)
+            {
+                try
+                {
+                    Report("Deploying Town of Us Mira support files (config, unity-libs)...");
+                    ModInstaller.DeployLaunchPackAssets(
+                        Path.Combine(_config.ModsFolder, "TownOfUs"),
+                        _config.AmongUsPath);
+                }
+                catch (Exception ex)
+                {
+                    failures.Add($"Town of Us Mira: {ex.Message}");
+                    if (!strict)
+                        Report($"Warning: Town of Us Mira pack deploy: {ex.Message}");
+                }
+            }
 
             foreach (var modId in launchSet)
             {
                 var entry = Store.GetEntry(modId);
+                var installed = _config.InstalledMods.FirstOrDefault(m =>
+                    string.Equals(m.Id, modId, StringComparison.OrdinalIgnoreCase));
                 var mod = entry != null
                     ? Store.CreateBaseMod(entry)
-                    : new Mod { Id = modId, Name = modId };
+                    : new Mod
+                    {
+                        Id = modId,
+                        Name = installed?.Name ?? modId
+                    };
                 var storagePath = Path.Combine(_config.ModsFolder, modId);
                 try
                 {
@@ -331,14 +673,88 @@ namespace SussyModManager.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    Report($"Warning: {mod.Name}: {ex.Message}");
+                    failures.Add($"{mod.Name}: {ex.Message}");
+                    if (!strict)
+                        Report($"Warning: {mod.Name}: {ex.Message}");
                 }
+            }
+
+            if (strict && failures.Count > 0)
+                throw new InvalidOperationException("Could not prepare mods for launch:\n" + string.Join("\n", failures));
+        }
+
+        /// <summary>
+        /// Rebuilds the live plugins folder to match the current selection. Serialized so rapid
+        /// checkbox toggles cannot interleave partial copies.
+        /// </summary>
+        public void ResyncActivePlugins() => RequestResyncActivePlugins(wait: true);
+
+        /// <summary>Debounced, serialized resync safe to call from the UI thread.</summary>
+        public void RequestResyncActivePlugins(bool wait = false)
+        {
+            CancellationTokenSource cts;
+            lock (_resyncLock)
+            {
+                _resyncDebounceCts?.Cancel();
+                _resyncDebounceCts?.Dispose();
+                _resyncDebounceCts = new CancellationTokenSource();
+                cts = _resyncDebounceCts;
+            }
+
+            var work = RunDebouncedResyncAsync(cts.Token);
+            if (wait)
+                work.GetAwaiter().GetResult();
+        }
+
+        private async Task RunDebouncedResyncAsync(CancellationToken debounceToken)
+        {
+            try
+            {
+                await Task.Delay(150, debounceToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            await _resyncGate.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                if (string.IsNullOrEmpty(_config.AmongUsPath))
+                    return;
+                if (!BepInExInstaller.IsBepInExInstalled(_config.AmongUsPath))
+                    return;
+
+                CopySelectedModsIntoGame();
+            }
+            catch (Exception ex)
+            {
+                Report($"Could not refresh active mods: {ex.Message}");
+            }
+            finally
+            {
+                _resyncGate.Release();
             }
         }
 
         public async Task PlayAsync(CancellationToken ct = default)
         {
-            await ActivateSelectedAsync(ct).ConfigureAwait(false);
+            var validation = ValidateBeforeLaunch();
+            if (!validation.Success)
+                throw new InvalidOperationException(validation.Message);
+
+            await ActivateSelectedAsync(ct, strict: true).ConfigureAwait(false);
+
+            var bepIssue = BepInExInstaller.GetReadinessIssue(_config.AmongUsPath, _config.GameChannel);
+            if (bepIssue != null)
+            {
+                var log = Path.Combine(_config.AmongUsPath, "BepInEx", "LogOutput.log");
+                var hint = File.Exists(log)
+                    ? $"{bepIssue}\n\nBepInEx log: {log}"
+                    : bepIssue;
+                throw new InvalidOperationException(hint);
+            }
+
             Launch.LaunchModded(_config.AmongUsPath);
         }
 
@@ -349,6 +765,51 @@ namespace SussyModManager.Core.Services
             Installer.CleanPluginsFolder(_config.AmongUsPath);
             Launch.LaunchVanilla(_config.AmongUsPath);
         }
+
+        /// <summary>
+        /// The mod ids that would be copied into the game on the next Play, based on the current
+        /// Launch checkboxes plus automatic dependency resolution.
+        /// </summary>
+        public List<string> GetLaunchModIds() =>
+            ExpandWithDependencies(_config.SelectedMods).Where(IsInstalled).ToList();
+
+        /// <summary>
+        /// Removes dependency-category mods from <see cref="Config.SelectedMods"/>. They are
+        /// auto-included at launch when a selected mod needs them and should not have their own
+        /// Launch checkbox (fixes Reactor sticking around after unchecking everything else).
+        /// </summary>
+        public bool PruneDependencySelections()
+        {
+            var before = _config.SelectedMods.Count;
+            _config.SelectedMods.RemoveAll(id =>
+            {
+                var entry = Store.GetEntry(id);
+                return entry != null && entry.IsDependency;
+            });
+            return _config.SelectedMods.Count != before;
+        }
+
+        /// <summary>
+        /// Full BepInEx pack mods (e.g. Town of Us Mira) copy config/unity-libs/patchers; deploy
+        /// them before flat DLL mods so the game folder matches the TOU bundle layout.
+        /// </summary>
+        internal List<string> OrderForLaunchCopy(List<string> modIds)
+        {
+            if (modIds == null || modIds.Count <= 1)
+                return modIds ?? new List<string>();
+
+            var index = modIds
+                .Select((id, i) => (id, i))
+                .ToDictionary(x => x.id, x => x.i, StringComparer.OrdinalIgnoreCase);
+
+            return modIds
+                .OrderByDescending(id => IsNestedPackMod(id))
+                .ThenBy(id => index[id])
+                .ToList();
+        }
+
+        private bool IsNestedPackMod(string modId) =>
+            string.Equals(Store.GetPackageType(modId), "nested", StringComparison.OrdinalIgnoreCase);
 
         /// <summary>Returns the given mod ids plus all of their transitive registry dependencies.</summary>
         public List<string> ExpandWithDependencies(IEnumerable<string> modIds)
@@ -416,7 +877,19 @@ namespace SussyModManager.Core.Services
 
         /// <summary>Re-downloads a mod at its newest version (this is how "update" works).</summary>
         public Task<InstallResult> UpdateModAsync(string modId, CancellationToken ct = default) =>
-            InstallModAsync(modId, null, ct);
+            InstallModAsync(modId, null, ct, forceRefresh: true);
+
+        private static bool VersionsMatch(InstalledMod installed, ModVersion latest)
+        {
+            var current = installed.ReleaseTag ?? installed.Version;
+            var tag = latest.ReleaseTag ?? latest.Version;
+            return !string.IsNullOrEmpty(current) &&
+                   !string.IsNullOrEmpty(tag) &&
+                   string.Equals(current, tag, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string FormatVersion(InstalledMod installed) =>
+            installed.ReleaseTag ?? installed.Version ?? "unknown";
 
         public async Task<InstallResult> UpdateAllAsync(CancellationToken ct = default)
         {

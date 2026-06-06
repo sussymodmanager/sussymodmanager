@@ -14,11 +14,15 @@ namespace SussyModManager.ViewModels
         private readonly AppEnvironment _env;
         public Preset Preset { get; }
 
+        /// <summary>Raised after a user preset is renamed or deleted so the list can refresh.</summary>
+        public event EventHandler Changed;
+
         [ObservableProperty] private bool _isBusy;
 
         public string Name => Preset.Name;
         public string Description => Preset.Description;
         public bool IsBuiltin => Preset.Builtin;
+        public bool IsUserPreset => !Preset.Builtin;
         public List<string> ModNames { get; }
 
         public PresetCardViewModel(AppEnvironment env, Preset preset)
@@ -35,7 +39,7 @@ namespace SussyModManager.ViewModels
         {
             if (IsBusy)
                 return;
-            if (!await _env.EnsureGamePathAsync($"install {Name}").ConfigureAwait(true))
+            if (!await _env.EnsureModOperationsReadyAsync($"install {Name}").ConfigureAwait(true))
                 return;
 
             IsBusy = true;
@@ -57,12 +61,62 @@ namespace SussyModManager.ViewModels
             }
         }
 
+        /// <summary>Loads this preset's mods as the active selection without launching.</summary>
+        [RelayCommand]
+        private async Task Apply()
+        {
+            var installedCount = Preset.ModIds.Count(_env.Manager.IsInstalled);
+            _env.Manager.SetLaunchSelection(Preset.ModIds, syncPlugins: false);
+            if (!string.IsNullOrEmpty(_env.Config.AmongUsPath))
+                await Task.Run(() => _env.Manager.ResyncActivePlugins()).ConfigureAwait(true);
+
+            var missing = Preset.ModIds.Count - installedCount;
+            _env.SetStatus(missing > 0
+                ? $"Loaded {Name}. {missing} mod(s) aren't installed yet - use Install Pack to get them."
+                : $"Loaded {Name} as your active selection.");
+            _env.RequestNavigation("installed");
+        }
+
+        [RelayCommand]
+        private async Task RenameAsync()
+        {
+            if (IsBuiltin)
+                return;
+            var newName = await DialogService.PromptAsync("Rename preset",
+                "Give this mod pack a new name.", Name).ConfigureAwait(true);
+            if (string.IsNullOrWhiteSpace(newName) || string.Equals(newName, Name, StringComparison.Ordinal))
+                return;
+
+            Preset.Name = newName;
+            Preset.UpdatedUtcTicks = DateTime.UtcNow.Ticks;
+            _env.Save();
+            OnPropertyChanged(nameof(Name));
+            _env.SetStatus($"Renamed preset to {newName}.");
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        [RelayCommand]
+        private async Task DeleteAsync()
+        {
+            if (IsBuiltin)
+                return;
+            if (!await DialogService.ConfirmAsync("Delete preset",
+                    $"Delete the preset \"{Name}\"? Your downloaded mods are not affected.",
+                    yes: "Delete", no: "Cancel", danger: true).ConfigureAwait(true))
+                return;
+
+            _env.Config.UserPresets.RemoveAll(p => string.Equals(p.Id, Preset.Id, StringComparison.OrdinalIgnoreCase));
+            _env.Save();
+            _env.SetStatus($"Deleted preset {Name}.");
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
         [RelayCommand]
         private async Task PlayAsync()
         {
             if (IsBusy)
                 return;
-            if (!await _env.EnsureGamePathAsync($"launch {Name}").ConfigureAwait(true))
+            if (!await _env.EnsureModOperationsReadyAsync($"launch {Name}").ConfigureAwait(true))
                 return;
 
             IsBusy = true;

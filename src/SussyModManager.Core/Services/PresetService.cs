@@ -15,7 +15,7 @@ namespace SussyModManager.Core.Services
     {
         public List<Preset> LoadBuiltinPresets()
         {
-            var json = DataStore.Read("builtin-presets.json");
+            var json = DataStore.ReadBundled("builtin-presets.json") ?? DataStore.Read("builtin-presets.json");
             var file = Json.Deserialize<PresetFile>(json);
             var presets = file?.presets ?? new List<Preset>();
             foreach (var preset in presets)

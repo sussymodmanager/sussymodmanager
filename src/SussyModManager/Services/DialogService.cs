@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Dto;
@@ -33,6 +35,99 @@ namespace SussyModManager.Services
         public static Task<bool> ConfirmAsync(string title, string message,
             string yes = "Yes", string no = "Cancel", bool danger = false) =>
             ShowCustomYesNoAsync(title, message, yes, no, danger);
+
+        /// <summary>
+        /// Prompts the user for a line of text. Returns the trimmed value, or null if cancelled
+        /// or left empty.
+        /// </summary>
+        public static async Task<string> PickThemeFileAsync()
+        {
+            return await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var topLevel = Owner != null ? TopLevel.GetTopLevel(Owner) : null;
+                if (topLevel == null)
+                    return null;
+
+                var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+                {
+                    Title = "Import theme",
+                    AllowMultiple = false,
+                    FileTypeFilter = new[]
+                    {
+                        new FilePickerFileType("Theme file") { Patterns = new[] { "*.json" } }
+                    }
+                }).ConfigureAwait(true);
+
+                return files?.FirstOrDefault()?.Path.LocalPath;
+            });
+        }
+
+        public static async Task<string> SaveThemeFileAsync(string suggestedName)
+        {
+            return await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var topLevel = Owner != null ? TopLevel.GetTopLevel(Owner) : null;
+                if (topLevel == null)
+                    return null;
+
+                var safe = string.IsNullOrWhiteSpace(suggestedName) ? "theme" : suggestedName.Trim();
+                foreach (var c in Path.GetInvalidFileNameChars())
+                    safe = safe.Replace(c, '-');
+
+                var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+                {
+                    Title = "Export theme",
+                    SuggestedFileName = safe + ".json",
+                    DefaultExtension = "json",
+                    FileTypeChoices = new[]
+                    {
+                        new FilePickerFileType("Theme file") { Patterns = new[] { "*.json" } }
+                    }
+                }).ConfigureAwait(true);
+
+                return file?.Path.LocalPath;
+            });
+        }
+
+        public static async Task<string> PickDllAsync()
+        {
+            return await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var owner = Owner;
+                var topLevel = owner != null ? TopLevel.GetTopLevel(owner) : null;
+                if (topLevel == null)
+                    return null;
+
+                var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+                {
+                    Title = "Select a BepInEx plugin (.dll)",
+                    AllowMultiple = false,
+                    FileTypeFilter = new[]
+                    {
+                        new FilePickerFileType("BepInEx plugin") { Patterns = new[] { "*.dll" } }
+                    }
+                }).ConfigureAwait(true);
+
+                var file = files?.FirstOrDefault();
+                return file?.Path.LocalPath;
+            });
+        }
+
+        public static async Task<string> PromptAsync(string title, string message, string initialValue = "")
+        {
+            return await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var win = Views.PromptWindow.Create(title, message, initialValue);
+                var owner = Owner;
+                if (owner != null)
+                    return await win.ShowDialog<string>(owner);
+
+                var tcs = new TaskCompletionSource<string>();
+                win.Closed += (_, _) => tcs.TrySetResult(null);
+                win.Show();
+                return await tcs.Task;
+            });
+        }
 
         /// <summary>
         /// Shows a results dialog for an install/preset/update operation. Returns nothing; only
