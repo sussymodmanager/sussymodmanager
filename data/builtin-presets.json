@@ -3,12 +3,13 @@
     {
       "id": "sus-af-pack",
       "name": "SUS AF PACK",
-      "description": "The flagship SUSSYMODMANAGER preset: Town of Us Mira plus its Roles Extension, Draft Mode, AUnlocker, Vanilla Enhancements and Better CrewLink. One click and you're sus af.",
+      "description": "The flagship SUSSYMODMANAGER preset: Town of Us Mira plus its Roles Extension, Draft Mode, AleLuduMod, AUnlocker, Vanilla Enhancements and Better CrewLink. One click and you're sus af.",
       "builtin": true,
       "modIds": [
         "TownOfUs",
         "TownOfUsMiraRolesExtension",
         "DraftModeTOUM",
+        "AleLuduMod",
         "AUnlocker",
         "VanillaEnhancements",
         "BetterCrewLink"
@@ -17,6 +18,7 @@
         "TownOfUs",
         "TownOfUsMiraRolesExtension",
         "DraftModeTOUM",
+        "AleLuduMod",
         "AUnlocker",
         "VanillaEnhancements",
         "BetterCrewLink"

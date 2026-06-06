@@ -36,7 +36,7 @@ You can also drop in your own plugin DLLs from **Installed → Add custom .dll**
 
 Two built-in packs ship with the app:
 
-**SUS AF PACK** — Town of Us Mira, Roles Extension, Draft Mode, AUnlocker, Vanilla Enhancements, Better CrewLink. Installs in dependency order; one button.
+**SUS AF PACK** — Town of Us Mira, Roles Extension, Draft Mode, AleLuduMod, AUnlocker, Vanilla Enhancements, Better CrewLink. Installs in dependency order; one button.
 
 **Vanilla+** — AUnlocker and Vanilla Enhancements only. Light tweaks, no role mods.
 
