@@ -11,7 +11,7 @@ Install mods, manage presets, pick a color theme, launch the game.
 
 - **SUS AF PACK** — one click installs Town of Us Mira, Roles Extension, Draft Mode, AUnlocker, Vanilla Enhancements and Better CrewLink in dependency order.
 - **Mod store** — GitHub releases and Thunderstore (Cosmella's Outfit Presets, TabsBuilderApi, etc.).
-- **Presets** — save, rename, delete and load mod selections without reinstalling.
+- **Presets** — save, rename, delete and load mod selections without reinstalling; export/import `.json` to share a pack with friends.
 - **Themes** — built-in color profiles or a custom four-color theme; export/import `.json` if you want to share one.
 - **BepInEx** — installs the right build (be.752, same as TOU Mira) and keeps dependencies sorted.
 - **Updates** — checks GitHub releases on launch; optional auto-download for your OS/arch.

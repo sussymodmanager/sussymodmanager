@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
+using SussyModManager.Core.Helpers;
 using SussyModManager.Services;
 
 namespace SussyModManager.ViewModels
@@ -63,6 +64,36 @@ namespace SussyModManager.ViewModels
             _env.Save();
             Reload();
             _env.SetStatus($"Saved \"{name}\" as a preset.");
+        }
+
+        [RelayCommand]
+        private async Task ImportPresetAsync()
+        {
+            var path = await DialogService.PickPresetFileAsync().ConfigureAwait(true);
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            try
+            {
+                var preset = PresetShareFile.Read(path);
+                if (preset == null)
+                {
+                    await DialogService.ShowErrorAsync("Import failed", "That file doesn't look like a preset.").ConfigureAwait(true);
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(preset.Name))
+                    preset.Name = System.IO.Path.GetFileNameWithoutExtension(path);
+
+                _env.Presets.UpsertUserPreset(_env.Config, preset);
+                _env.Save();
+                Reload();
+                _env.SetStatus($"Imported preset \"{preset.Name}\".");
+            }
+            catch (Exception ex)
+            {
+                await DialogService.ShowErrorAsync("Import failed", ex.Message).ConfigureAwait(true);
+            }
         }
     }
 }

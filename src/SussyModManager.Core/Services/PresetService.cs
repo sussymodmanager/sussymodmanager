@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -29,6 +30,35 @@ namespace SussyModManager.Core.Services
             if (config?.UserPresets != null)
                 all.AddRange(config.UserPresets);
             return all;
+        }
+
+        /// <summary>
+        /// Adds or replaces a user preset by id. Never touches built-in presets.
+        /// </summary>
+        public Preset UpsertUserPreset(Config config, Preset preset)
+        {
+            config.UserPresets ??= new List<Preset>();
+            preset.Builtin = false;
+
+            var builtinIds = LoadBuiltinPresets()
+                .Select(p => p.Id)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (builtinIds.Contains(preset.Id))
+                preset.Id = Guid.NewGuid().ToString("N");
+
+            var existingByName = config.UserPresets.FirstOrDefault(p =>
+                string.Equals(p.Name, preset.Name, StringComparison.OrdinalIgnoreCase));
+            if (existingByName != null)
+            {
+                preset.Id = existingByName.Id;
+                preset.CreatedUtcTicks = existingByName.CreatedUtcTicks;
+            }
+
+            config.UserPresets.RemoveAll(p =>
+                string.Equals(p.Id, preset.Id, StringComparison.OrdinalIgnoreCase));
+            preset.UpdatedUtcTicks = DateTime.UtcNow.Ticks;
+            config.UserPresets.Add(preset);
+            return preset;
         }
     }
 }

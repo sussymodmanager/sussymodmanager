@@ -89,6 +89,55 @@ namespace SussyModManager.Services
             });
         }
 
+        public static async Task<string> PickPresetFileAsync()
+        {
+            return await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var topLevel = Owner != null ? TopLevel.GetTopLevel(Owner) : null;
+                if (topLevel == null)
+                    return null;
+
+                var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+                {
+                    Title = "Import preset",
+                    AllowMultiple = false,
+                    FileTypeFilter = new[]
+                    {
+                        new FilePickerFileType("Preset file") { Patterns = new[] { "*.json" } }
+                    }
+                }).ConfigureAwait(true);
+
+                return files?.FirstOrDefault()?.Path.LocalPath;
+            });
+        }
+
+        public static async Task<string> SavePresetFileAsync(string suggestedName)
+        {
+            return await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var topLevel = Owner != null ? TopLevel.GetTopLevel(Owner) : null;
+                if (topLevel == null)
+                    return null;
+
+                var safe = string.IsNullOrWhiteSpace(suggestedName) ? "preset" : suggestedName.Trim();
+                foreach (var c in Path.GetInvalidFileNameChars())
+                    safe = safe.Replace(c, '-');
+
+                var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+                {
+                    Title = "Export preset",
+                    SuggestedFileName = safe + ".json",
+                    DefaultExtension = "json",
+                    FileTypeChoices = new[]
+                    {
+                        new FilePickerFileType("Preset file") { Patterns = new[] { "*.json" } }
+                    }
+                }).ConfigureAwait(true);
+
+                return file?.Path.LocalPath;
+            });
+        }
+
         public static async Task<string> PickDllAsync()
         {
             return await Dispatcher.UIThread.InvokeAsync(async () =>

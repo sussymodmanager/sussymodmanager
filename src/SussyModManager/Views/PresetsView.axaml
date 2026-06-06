@@ -11,8 +11,12 @@
                 <TextBlock Text="{Binding Title}" Classes="h1" />
                 <TextBlock Text="{Binding Subtitle}" Classes="muted" />
             </StackPanel>
-            <Button Grid.Column="1" Classes="ghost" Content="Save current selection"
-                    Command="{Binding SaveCurrentSelectionCommand}" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button Classes="ghost" Content="Import preset"
+                        Command="{Binding ImportPresetCommand}" />
+                <Button Classes="ghost" Content="Save current selection"
+                        Command="{Binding SaveCurrentSelectionCommand}" />
+            </StackPanel>
         </Grid>
 
         <ScrollViewer Grid.Row="1" Margin="0,18,0,0">
@@ -62,6 +66,10 @@
                                     <Button Classes="ghost" Content="Load selection"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Command="{Binding ApplyCommand}"
+                                            IsEnabled="{Binding !IsBusy}" />
+                                    <Button Classes="ghost" Content="Export"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Command="{Binding ExportCommand}"
                                             IsEnabled="{Binding !IsBusy}" />
                                     <Grid ColumnDefinitions="*,*" IsVisible="{Binding IsUserPreset}">
                                         <Button Grid.Column="0" Classes="ghost" Content="Rename"
