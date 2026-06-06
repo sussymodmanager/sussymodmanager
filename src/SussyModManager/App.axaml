@@ -26,6 +26,7 @@
 
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
         <StyleInclude Source="avares://SussyModManager/Themes/Controls.axaml" />
     </Application.Styles>
 

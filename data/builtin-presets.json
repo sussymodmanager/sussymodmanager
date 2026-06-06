@@ -21,6 +21,20 @@
         "VanillaEnhancements",
         "BetterCrewLink"
       ]
+    },
+    {
+      "id": "vanilla-plus",
+      "name": "Vanilla+",
+      "description": "Light tweaks only: AUnlocker and Vanilla Enhancements. No role mods, still mostly vanilla.",
+      "builtin": true,
+      "modIds": [
+        "AUnlocker",
+        "VanillaEnhancements"
+      ],
+      "installOrder": [
+        "AUnlocker",
+        "VanillaEnhancements"
+      ]
     }
   ]
 }

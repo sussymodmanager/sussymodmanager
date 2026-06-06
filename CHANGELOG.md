@@ -8,7 +8,9 @@ Mod downloads are more resilient when GitHub rate-limits the API — direct rele
 
 Settings cleanup: dropped the working-mod interop reference field (interop seeding still happens automatically from cache). Custom themes now use the same four swatch colors as the built-in profiles; the rest is derived unless you tick "Edit all colors". You can export and import themes as `.json` files.
 
-Presets page: export any pack (built-in or custom) as a shareable `.json`, or import one someone sent you. Imports land as user presets and won't overwrite built-ins.
+Presets page: export any pack (built-in or custom) as a shareable `.json`, or import one someone sent you. Imports land as user presets and won't overwrite built-ins. New built-in **Vanilla+** preset (AUnlocker + Vanilla Enhancements).
+
+Theme editor uses a proper color picker (spectrum/sliders) instead of typing hex codes.
 
 Also fixes the silent startup crash on single-file Windows builds (SkiaSharp native DLL), and the version label reading the wrong assembly.
 
