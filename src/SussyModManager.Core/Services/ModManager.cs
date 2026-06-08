@@ -39,6 +39,7 @@ namespace SussyModManager.Core.Services
     public class ModManager
     {
         private readonly Config _config;
+        private readonly PresetService _presets;
         private readonly object _resyncLock = new object();
         private readonly SemaphoreSlim _resyncGate = new SemaphoreSlim(1, 1);
         private CancellationTokenSource _resyncDebounceCts;
@@ -51,9 +52,10 @@ namespace SussyModManager.Core.Services
 
         public event EventHandler<string> Progress;
 
-        public ModManager(Config config, ModStore store = null)
+        public ModManager(Config config, ModStore store = null, PresetService presets = null)
         {
             _config = config;
+            _presets = presets ?? new PresetService();
             Store = store ?? new ModStore();
             Downloader = new ModDownloader(Store);
             Installer = new ModInstaller(Store);
@@ -68,6 +70,9 @@ namespace SussyModManager.Core.Services
 
         public bool IsInstalled(string modId) =>
             _config.InstalledMods.Any(m => string.Equals(m.Id, modId, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>Installed in config and launchable files exist on disk.</summary>
+        public bool IsModReady(string modId) => IsInstalled(modId) && HasLaunchableFiles(modId);
 
         /// <summary>True when the mod's storage folder has DLLs or a copyable mod tree.</summary>
         public bool HasLaunchableFiles(string modId)
@@ -85,8 +90,18 @@ namespace SussyModManager.Core.Services
             if (Directory.GetFiles(storagePath, "*.dll", SearchOption.TopDirectoryOnly).Length > 0)
                 return true;
 
-            return Directory.GetDirectories(storagePath).Any(sub =>
-                Directory.GetFiles(sub, "*.dll", SearchOption.AllDirectories).Length > 0);
+            if (Directory.GetDirectories(storagePath).Any(sub =>
+                    Directory.GetFiles(sub, "*.dll", SearchOption.AllDirectories).Length > 0))
+                return true;
+
+            var entry = Store.GetEntry(modId);
+            if (!string.IsNullOrEmpty(entry?.executableName) &&
+                string.Equals(entry.category, "Utility", StringComparison.OrdinalIgnoreCase))
+            {
+                return Directory.GetFiles(storagePath, entry.executableName, SearchOption.AllDirectories).Length > 0;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -333,7 +348,8 @@ namespace SussyModManager.Core.Services
 
             if (version == null || string.IsNullOrEmpty(version.DownloadUrl))
             {
-                result.Message = $"No downloadable version found for {mod.Name}.";
+                result.Message = Store.FormatModFailure(modId,
+                    "No downloadable version found. The mod may have no GitHub release yet.");
                 return result;
             }
 
@@ -360,7 +376,7 @@ namespace SussyModManager.Core.Services
                 Report($"Installing dependency {depEntry.name}...");
                 var depResult = await InstallModAsync(dep.modId, null, ct).ConfigureAwait(false);
                 if (!depResult.Success)
-                    result.Warnings.Add($"Dependency {depEntry.name}: {depResult.Message}");
+                    result.Warnings.Add(Store.FormatModFailure(dep.modId, depResult.Message));
             }
 
             var storagePath = Path.Combine(_config.ModsFolder, modId);
@@ -379,7 +395,7 @@ namespace SussyModManager.Core.Services
 
             if (!ok)
             {
-                result.Message = $"Failed to download {mod.Name}.";
+                result.Message = Store.FormatModFailure(modId, "Download or extraction failed.");
                 return result;
             }
 
@@ -462,44 +478,258 @@ namespace SussyModManager.Core.Services
             Report("Game converted to vanilla. Mods remain downloaded for later.");
         }
 
-        /// <summary>Installs (if needed), then launches exactly this preset's mods.</summary>
-        public async Task PlayPresetAsync(Preset preset, CancellationToken ct = default)
+        /// <summary>
+        /// Installs missing pack mods, updates installed pack mods to their latest release, selects
+        /// the preset, then launches. Pass a fresh preset from <see cref="PresetService.ResolveFreshPreset"/>.
+        /// </summary>
+        public bool IsPackModeActive => !string.IsNullOrWhiteSpace(_config.ActivePackId);
+
+        public string GetActivePackName() =>
+            _presets.GetPresetById(_config.ActivePackId, _config)?.Name;
+
+        /// <summary>Turns on pack mode and sets launch selection to the pack mods only (1:1).</summary>
+        public void SelectPack(Preset preset)
         {
-            await InstallPresetAsync(preset, ct).ConfigureAwait(false);
+            preset = _presets.ResolveFreshPreset(preset, _config) ?? preset;
+            if (preset == null || string.IsNullOrWhiteSpace(preset.Id))
+                return;
 
-            SetLaunchSelection(preset.ModIds, syncPlugins: false);
-
-            await PlayAsync(ct).ConfigureAwait(false);
+            RememberActivePack(preset);
+            SetLaunchSelection(preset.ModIds, syncPlugins: !string.IsNullOrEmpty(_config.AmongUsPath));
         }
 
-        /// <summary>Installs every mod in a preset, in dependency order.</summary>
-        public async Task<InstallResult> InstallPresetAsync(Preset preset, CancellationToken ct = default)
+        /// <summary>Turns off pack mode; launch checkboxes stay as-is for custom play.</summary>
+        public void DeselectPack()
+        {
+            if (string.IsNullOrWhiteSpace(_config.ActivePackId))
+                return;
+
+            _config.ActivePackId = null;
+            _config.Save();
+        }
+
+        public async Task<InstallResult> PlayPresetAsync(Preset preset, CancellationToken ct = default)
+        {
+            preset = _presets.ResolveFreshPreset(preset, _config) ?? preset;
+            SelectPack(preset);
+            return await PlayAsync(ct).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Before play: install any missing preset mods, then refresh every installed pack mod.
+        /// Install-only flows should use <see cref="InstallPresetAsync"/> instead (missing mods only).
+        /// </summary>
+        internal async Task<InstallResult> SyncPresetModsForPlayAsync(Preset preset, CancellationToken ct = default)
         {
             var aggregate = new InstallResult { Success = true };
+
             foreach (var modId in preset.GetOrderedModIds())
             {
                 ct.ThrowIfCancellationRequested();
-                if (IsInstalled(modId))
-                {
-                    Report($"{modId} already installed, skipping.");
+                if (IsInstalled(modId) && HasLaunchableFiles(modId))
                     continue;
-                }
 
+                var entry = Store.GetEntry(modId);
+                Report($"Installing {entry?.name ?? modId}...");
                 var single = await InstallModAsync(modId, null, ct).ConfigureAwait(false);
                 aggregate.Warnings.AddRange(single.Warnings);
                 if (!single.Success)
                 {
                     aggregate.Success = false;
-                    aggregate.Warnings.Add($"{modId}: {single.Message}");
+                    aggregate.Warnings.Add(Store.FormatModFailure(modId, single.Message));
                 }
             }
 
-            SetLaunchSelection(preset.ModIds, syncPlugins: false);
+            foreach (var modId in preset.ModIds ?? new List<string>())
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!IsInstalled(modId))
+                    continue;
+
+                if (!await HasModUpdateAsync(modId, ct).ConfigureAwait(false))
+                    continue;
+
+                var entry = Store.GetEntry(modId);
+                Report($"Updating {entry?.name ?? modId}...");
+                var single = await UpdateModAsync(modId, ct).ConfigureAwait(false);
+                aggregate.Warnings.AddRange(single.Warnings);
+                if (!single.Success)
+                {
+                    aggregate.Success = false;
+                    aggregate.Warnings.Add(Store.FormatModFailure(modId, single.Message));
+                }
+            }
 
             aggregate.Message = aggregate.Success
-                ? $"{preset.Name} installed and selected."
+                ? $"{preset.Name} ready to play."
+                : $"{preset.Name} ready with some warnings.";
+            return aggregate;
+        }
+
+        /// <summary>Pulls latest preset/registry JSON from GitHub when possible.</summary>
+        public async Task RefreshLivePresetCatalogAsync(CancellationToken ct = default)
+        {
+            try
+            {
+                await DataStore.RefreshAsync(ct: ct).ConfigureAwait(false);
+                Store.Reload();
+            }
+            catch
+            {
+            }
+        }
+
+        /// <summary>Installs missing preset mods only (skips mods already on disk).</summary>
+        public async Task<InstallResult> InstallMissingPresetModsAsync(Preset preset, CancellationToken ct = default)
+        {
+            preset = _presets.ResolveFreshPreset(preset, _config) ?? preset;
+            var aggregate = new InstallResult { Success = true };
+            foreach (var modId in preset.GetOrderedModIds())
+            {
+                ct.ThrowIfCancellationRequested();
+                if (IsModReady(modId))
+                {
+                    Report($"{modId} already installed, skipping.");
+                    continue;
+                }
+
+                var entry = Store.GetEntry(modId);
+                Report($"Installing {entry?.name ?? modId}...");
+                var single = await InstallModAsync(modId, null, ct).ConfigureAwait(false);
+                aggregate.Warnings.AddRange(single.Warnings);
+                if (!single.Success)
+                {
+                    aggregate.Success = false;
+                    aggregate.Warnings.Add(Store.FormatModFailure(modId, single.Message));
+                }
+            }
+
+            aggregate.Message = aggregate.Success
+                ? $"{preset.Name} mods ready."
                 : $"{preset.Name} installed with some warnings.";
             return aggregate;
+        }
+
+        /// <summary>Refreshes live preset data, installs missing mods only — does not select the pack.</summary>
+        public async Task<InstallResult> InstallPresetAsync(Preset preset, CancellationToken ct = default)
+        {
+            await RefreshLivePresetCatalogAsync(ct).ConfigureAwait(false);
+            preset = _presets.ResolveFreshPreset(preset, _config) ?? preset;
+            var aggregate = await InstallMissingPresetModsAsync(preset, ct).ConfigureAwait(false);
+
+            if (ShouldAutoSelectSusAfOnFirstInstall(preset))
+            {
+                preset = _presets.ResolveFreshPreset(preset, _config) ?? preset;
+                SelectPack(preset);
+                MarkSusAfInstallPackAutoSelectDone();
+                aggregate.Message = aggregate.Success
+                    ? $"{preset.Name} installed and selected for play."
+                    : $"{preset.Name} installed with some warnings (selected for play).";
+            }
+            else
+            {
+                aggregate.Message = aggregate.Success
+                    ? $"{preset.Name} mods installed."
+                    : $"{preset.Name} installed with some warnings.";
+            }
+
+            return aggregate;
+        }
+
+        /// <summary>First successful SUS AF Install Pack auto-selects (e.g. wizard skipped).</summary>
+        private bool ShouldAutoSelectSusAfOnFirstInstall(Preset preset)
+        {
+            if (IsPackModeActive || _config.SusAfInstallPackAutoSelectDone)
+                return false;
+            if (!string.Equals(preset?.Id, "sus-af-pack", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return (preset.ModIds ?? new List<string>()).Any(IsModReady);
+        }
+
+        private void MarkSusAfInstallPackAutoSelectDone()
+        {
+            if (_config.SusAfInstallPackAutoSelectDone)
+                return;
+            _config.SusAfInstallPackAutoSelectDone = true;
+            _config.Save();
+        }
+
+        /// <summary>Refreshes live preset data, installs missing mods, then selects the pack for play.</summary>
+        public async Task<InstallResult> SelectPresetAsync(Preset preset, CancellationToken ct = default)
+        {
+            await RefreshLivePresetCatalogAsync(ct).ConfigureAwait(false);
+            preset = _presets.ResolveFreshPreset(preset, _config) ?? preset;
+            var aggregate = await InstallMissingPresetModsAsync(preset, ct).ConfigureAwait(false);
+            SelectPack(preset);
+            if (string.Equals(preset.Id, "sus-af-pack", StringComparison.OrdinalIgnoreCase))
+                MarkSusAfInstallPackAutoSelectDone();
+
+            aggregate.Message = aggregate.Success
+                ? $"{preset.Name} selected for play."
+                : $"{preset.Name} selected with some install warnings.";
+            return aggregate;
+        }
+
+        private void RememberActivePack(Preset preset)
+        {
+            if (preset == null || string.IsNullOrWhiteSpace(preset.Id))
+                return;
+
+            _config.ActivePackId = preset.Id;
+            _config.Save();
+        }
+
+        /// <summary>
+        /// Pack mode only: refresh pack definition, install missing mods, update pack mods, enforce 1:1 launch.
+        /// </summary>
+        internal async Task<InstallResult> PreparePackForPlayAsync(CancellationToken ct = default)
+        {
+            if (!IsPackModeActive)
+                return new InstallResult { Success = true };
+
+            var aggregate = new InstallResult { Success = true };
+
+            try
+            {
+                await DataStore.RefreshAsync(ct: ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                aggregate.Warnings.Add($"Could not refresh presets from GitHub: {ex.Message}");
+            }
+
+            var preset = ResolveActivePackPreset();
+            if (preset == null)
+            {
+                aggregate.Success = false;
+                aggregate.Message = "Active pack not found.";
+                return aggregate;
+            }
+
+            var sync = await SyncPresetModsForPlayAsync(preset, ct).ConfigureAwait(false);
+            aggregate.Warnings.AddRange(sync.Warnings);
+            if (!sync.Success)
+                aggregate.Success = false;
+            aggregate.Message = sync.Message;
+
+            SetLaunchSelection(preset.ModIds, syncPlugins: !string.IsNullOrEmpty(_config.AmongUsPath));
+            return aggregate;
+        }
+
+        private Preset ResolveActivePackPreset()
+        {
+            if (string.IsNullOrWhiteSpace(_config.ActivePackId))
+                return null;
+
+            var active = _presets.GetPresetById(_config.ActivePackId, _config);
+            if (active == null)
+            {
+                DeselectPack();
+                return null;
+            }
+
+            return _presets.ResolveFreshPreset(active, _config);
         }
 
         public async Task EnsureBepInExAsync(CancellationToken ct = default)
@@ -532,10 +762,15 @@ namespace SussyModManager.Core.Services
                 new Progress<int>(p => Report($"BepInEx... {p}%")), ct, force: true).ConfigureAwait(false);
         }
 
+        /// <summary>True when Town of Us Mira is checked for launch (not merely downloaded).</summary>
+        private bool IsTownOfUsSelectedForLaunch() =>
+            _config.SelectedMods.Any(id =>
+                string.Equals(id, "TownOfUs", StringComparison.OrdinalIgnoreCase));
+
         /// <summary>Deploy the exact BepInEx tree bundled inside the installed TOU Mira zip.</summary>
         private bool TryDeployTownOfUsBepInExStack()
         {
-            if (string.IsNullOrEmpty(_config.AmongUsPath) || !IsInstalled("TownOfUs"))
+            if (string.IsNullOrEmpty(_config.AmongUsPath) || !IsTownOfUsSelectedForLaunch())
                 return false;
 
             var pack = Path.Combine(_config.ModsFolder, "TownOfUs");
@@ -554,7 +789,9 @@ namespace SussyModManager.Core.Services
 
             await EnsureBepInExAsync(ct).ConfigureAwait(false);
             CopySelectedModsIntoGame(strict);
-            EnsureWorkingInterop();
+
+            if (LaunchSetNeedsReactor(GetLaunchModIds()))
+                EnsureWorkingInterop();
         }
 
         /// <summary>
@@ -737,8 +974,15 @@ namespace SussyModManager.Core.Services
             }
         }
 
-        public async Task PlayAsync(CancellationToken ct = default)
+        public async Task<InstallResult> PlayAsync(CancellationToken ct = default) =>
+            await PlayAsync(skipPackPrepare: false, ct).ConfigureAwait(false);
+
+        private async Task<InstallResult> PlayAsync(bool skipPackPrepare, CancellationToken ct = default)
         {
+            InstallResult packSync = null;
+            if (!skipPackPrepare)
+                packSync = await PreparePackForPlayAsync(ct).ConfigureAwait(false);
+
             var validation = ValidateBeforeLaunch();
             if (!validation.Success)
                 throw new InvalidOperationException(validation.Message);
@@ -756,6 +1000,41 @@ namespace SussyModManager.Core.Services
             }
 
             Launch.LaunchModded(_config.AmongUsPath);
+            LaunchSelectedUtilities();
+
+            var result = new InstallResult { Success = true, Message = "Launched! Have fun being sus." };
+            if (packSync != null)
+            {
+                if (packSync.Warnings.Count > 0)
+                    result.Warnings.AddRange(packSync.Warnings);
+                if (!packSync.Success)
+                {
+                    result.Message = packSync.Message ?? "Launched, but some pack mods failed to sync.";
+                }
+                else if (packSync.Warnings.Count > 0)
+                {
+                    result.Message = "Launched — some pack mods had warnings.";
+                }
+            }
+
+            return result;
+        }
+
+        private void LaunchSelectedUtilities()
+        {
+            foreach (var modId in _config.SelectedMods)
+            {
+                var entry = Store.GetEntry(modId);
+                if (entry == null ||
+                    !string.Equals(entry.category, "Utility", StringComparison.OrdinalIgnoreCase) ||
+                    string.IsNullOrWhiteSpace(entry.executableName))
+                    continue;
+
+                Launch.LaunchUtility(
+                    Path.Combine(_config.ModsFolder, modId),
+                    entry.executableName,
+                    entry.name ?? modId);
+            }
         }
 
         public void PlayVanilla()
@@ -879,6 +1158,39 @@ namespace SussyModManager.Core.Services
         public Task<InstallResult> UpdateModAsync(string modId, CancellationToken ct = default) =>
             InstallModAsync(modId, null, ct, forceRefresh: true);
 
+        /// <summary>True when the registry has a newer release than the installed copy.</summary>
+        internal async Task<bool> HasModUpdateAsync(string modId, CancellationToken ct = default)
+        {
+            var installed = _config.InstalledMods.FirstOrDefault(m =>
+                string.Equals(m.Id, modId, StringComparison.OrdinalIgnoreCase));
+            if (installed == null)
+                return false;
+
+            var entry = Store.GetEntry(modId);
+            if (entry == null)
+                return false;
+
+            var mod = Store.CreateBaseMod(entry);
+            try
+            {
+                await Store.FetchVersionsAsync(mod, allVersions: false, includePrerelease: _config.ShowBetaVersions, ct)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+                return false;
+            }
+
+            var latest = PickVersion(mod);
+            if (latest == null)
+                return false;
+
+            var current = installed.ReleaseTag ?? installed.Version;
+            var latestTag = latest.ReleaseTag ?? latest.Version;
+            return !string.IsNullOrEmpty(latestTag) &&
+                   !string.Equals(current, latestTag, StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool VersionsMatch(InstalledMod installed, ModVersion latest)
         {
             var current = installed.ReleaseTag ?? installed.Version;
@@ -910,7 +1222,7 @@ namespace SussyModManager.Core.Services
                 if (!single.Success)
                 {
                     aggregate.Success = false;
-                    aggregate.Warnings.Add($"{update.Name}: {single.Message}");
+                    aggregate.Warnings.Add(single.Message ?? Store.FormatModFailure(update.ModId, "Update failed."));
                 }
             }
 

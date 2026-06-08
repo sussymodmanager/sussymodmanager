@@ -17,16 +17,61 @@ namespace SussyModManager.ViewModels
 
         [ObservableProperty] private bool _isBusy;
         [ObservableProperty] private bool _hasNoMods;
+        [ObservableProperty] private bool _isPackMode;
+        [ObservableProperty] private string _selectedPackName;
+        [ObservableProperty] private string _playButtonLabel = "▶  PLAY";
+        [ObservableProperty] private string _subtitle =
+            "Pick which mods to launch with, then hit Play.";
 
         private bool _autoCheckedOnce;
 
         public string Title => "Installed Mods";
-        public string Subtitle => "Pick which mods to launch with, then hit Play.";
 
         public InstalledViewModel(AppEnvironment env)
         {
             _env = env;
+            _env.PackSelectionChanged += (_, _) => RefreshPackMode();
             Reload();
+            RefreshPackMode();
+        }
+
+        public string PackSidebarTitle =>
+            IsPackMode && !string.IsNullOrEmpty(SelectedPackName) ? SelectedPackName : "Custom play";
+
+        public string PackSidebarHint =>
+            IsPackMode && !string.IsNullOrEmpty(SelectedPackName)
+                ? "Only pack mods launch on Play."
+                : "Pick launch mods below.";
+
+        public void RefreshPackMode()
+        {
+            IsPackMode = _env.Manager.IsPackModeActive;
+            SelectedPackName = _env.Manager.GetActivePackName() ?? "";
+            PlayButtonLabel = IsPackMode && !string.IsNullOrEmpty(SelectedPackName)
+                ? $"▶  Play {SelectedPackName}"
+                : "▶  PLAY";
+            Subtitle = IsPackMode && !string.IsNullOrEmpty(SelectedPackName)
+                ? $"Pack mode: {SelectedPackName}. Missing mods install and updates run when you hit Play. Deselect Pack to mix your own mods."
+                : "Custom mode: pick which mods to launch with, then hit Play.";
+            OnPropertyChanged(nameof(PackSidebarTitle));
+            OnPropertyChanged(nameof(PackSidebarHint));
+        }
+
+        [RelayCommand]
+        private void DeselectPack()
+        {
+            _env.Manager.DeselectPack();
+            _env.NotifyPackSelectionChanged();
+            foreach (var card in Installed)
+                card.RefreshState();
+            _env.SetStatus("Pack deselected. Your launch checkboxes are unchanged.");
+        }
+
+        public void RefreshCardStates()
+        {
+            foreach (var card in Installed)
+                card.RefreshState();
+            HasNoMods = Installed.Count == 0;
         }
 
         public void Reload()
@@ -62,7 +107,7 @@ namespace SussyModManager.ViewModels
             }
             HasNoMods = Installed.Count == 0;
 
-            if (!_autoCheckedOnce && Installed.Count > 0)
+            if (!_autoCheckedOnce && Installed.Count > 0 && _env.Config.AutoUpdateMods)
             {
                 _autoCheckedOnce = true;
                 _ = CheckUpdatesAsync();
@@ -73,7 +118,6 @@ namespace SussyModManager.ViewModels
         {
             if (sender is ModCardViewModel card)
                 card.Uninstalled -= OnCardUninstalled;
-            Reload();
         }
 
         [RelayCommand]
@@ -92,7 +136,7 @@ namespace SussyModManager.ViewModels
                 _env.SetStatus("Adding custom DLL...");
                 var result = await Task.Run(() => _env.Manager.ImportCustomDll(path)).ConfigureAwait(true);
                 _env.SetStatus(result.Message);
-                Reload();
+                _env.NotifyModLibraryChanged();
 
                 if (!string.IsNullOrEmpty(_env.Config.AmongUsPath))
                     await Task.Run(() => _env.Manager.ResyncActivePlugins()).ConfigureAwait(true);
@@ -120,13 +164,17 @@ namespace SussyModManager.ViewModels
             IsBusy = true;
             try
             {
-                _env.SetStatus("Validating mods and launching...");
-                await _env.Manager.PlayAsync().ConfigureAwait(true);
-                _env.SetStatus("Launched! Have fun being sus.");
+                _env.SetStatus(IsPackMode
+                    ? $"Preparing {SelectedPackName} and launching..."
+                    : "Validating mods and launching...");
+                var result = await _env.Manager.PlayAsync().ConfigureAwait(true);
+                _env.NotifyModLibraryChanged();
+                _env.SetStatus(result.Message);
+                await DialogService.ShowResultAsync("Launch", result).ConfigureAwait(true);
             }
             catch (Exception ex)
             {
-                Reload();
+                RefreshCardStates();
                 _env.SetStatus($"Launch failed: {ex.Message}");
                 await DialogService.ShowErrorAsync("Launch failed", ex.Message).ConfigureAwait(true);
             }
@@ -203,7 +251,7 @@ namespace SussyModManager.ViewModels
                 _env.SetStatus("Updating all mods...");
                 var result = await _env.Manager.UpdateAllAsync().ConfigureAwait(true);
                 _env.SetStatus(result.Message);
-                Reload();
+                _env.NotifyModLibraryChanged();
                 await DialogService.ShowResultAsync("Update all mods", result).ConfigureAwait(true);
             }
             catch (Exception ex)
@@ -226,6 +274,12 @@ namespace SussyModManager.ViewModels
         [RelayCommand]
         private void SelectAll()
         {
+            if (_env.Manager.IsPackModeActive)
+            {
+                _env.Manager.DeselectPack();
+                _env.NotifyPackSelectionChanged();
+            }
+
             foreach (var card in Installed)
             {
                 if (!card.IsSelected)
@@ -236,6 +290,12 @@ namespace SussyModManager.ViewModels
         [RelayCommand]
         private void ClearSelection()
         {
+            if (_env.Manager.IsPackModeActive)
+            {
+                _env.Manager.DeselectPack();
+                _env.NotifyPackSelectionChanged();
+            }
+
             foreach (var card in Installed)
             {
                 if (card.IsSelected)

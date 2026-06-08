@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace SussyModManager.Core.Models
 {
     /// <summary>
-    /// A named collection of mods. Built-in presets (like SUS AF PACK) ship with the app and
+    /// A named collection of mods. Built-in presets (like SUS AF) ship with the app and
     /// cannot be deleted; user presets are created from the current selection.
     /// </summary>
     public class Preset
@@ -13,6 +13,10 @@ namespace SussyModManager.Core.Models
         public string Name { get; set; }
         public string Description { get; set; }
         public bool Builtin { get; set; }
+
+        /// <summary>When true, preset is sorted to the top of the Presets list (built-in only).</summary>
+        public bool Pinned { get; set; }
+
         public List<string> ModIds { get; set; } = new List<string>();
 
         // Optional dependency-aware ordering for bulk install.

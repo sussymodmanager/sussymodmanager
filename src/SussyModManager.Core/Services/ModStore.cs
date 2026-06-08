@@ -221,5 +221,38 @@ namespace SussyModManager.Core.Services
 
         public List<string> GetIncompatibilities(string modId) =>
             GetEntry(modId)?.incompatibilities ?? new List<string>();
+
+        /// <summary>GitHub or Thunderstore page URL for install-failure dialogs.</summary>
+        public string GetRepositoryUrl(string modId)
+        {
+            var entry = GetEntry(modId);
+            if (entry == null)
+                return null;
+
+            if (string.Equals(entry.source, "thunderstore", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrEmpty(entry.thunderstoreNamespace) &&
+                !string.IsNullOrEmpty(entry.thunderstoreName))
+            {
+                return $"https://thunderstore.io/c/among-us/p/{entry.thunderstoreNamespace}/{entry.thunderstoreName}/";
+            }
+
+            if (!string.IsNullOrEmpty(entry.githubOwner) && !string.IsNullOrEmpty(entry.githubRepo))
+                return $"https://github.com/{entry.githubOwner}/{entry.githubRepo}";
+
+            return null;
+        }
+
+        public string FormatModFailure(string modId, string reason)
+        {
+            var entry = GetEntry(modId);
+            var name = entry?.name ?? modId;
+            var url = GetRepositoryUrl(modId);
+            if (string.IsNullOrWhiteSpace(reason))
+                reason = "Install failed.";
+
+            return string.IsNullOrEmpty(url)
+                ? $"{name} ({modId}): {reason}"
+                : $"{name} ({modId}): {reason}\n  {url}";
+        }
     }
 }

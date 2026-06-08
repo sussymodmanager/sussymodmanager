@@ -74,6 +74,7 @@ namespace SussyModManager.ViewModels
                 var result = await _env.Manager.InstallModAsync(Id).ConfigureAwait(true);
                 _env.SetStatus(result.Message);
                 RefreshState();
+                _env.NotifyModLibraryChanged();
                 await DialogService.ShowResultAsync($"Install {Name}", result).ConfigureAwait(true);
             }
             catch (Exception ex)
@@ -123,6 +124,7 @@ namespace SussyModManager.ViewModels
                 _env.SetStatus(result.Message);
                 HasUpdate = false;
                 RefreshState();
+                _env.NotifyModLibraryChanged();
                 await DialogService.ShowResultAsync($"Update {Name}", result).ConfigureAwait(true);
             }
             catch (Exception ex)
@@ -164,6 +166,7 @@ namespace SussyModManager.ViewModels
                 IsBusy = false;
             }
             RefreshState();
+            _env.NotifyModLibraryChanged();
             Uninstalled?.Invoke(this, EventArgs.Empty);
         }
 
@@ -178,6 +181,12 @@ namespace SussyModManager.ViewModels
             {
                 RefreshState();
                 return;
+            }
+
+            if (_env.Manager.IsPackModeActive)
+            {
+                _env.Manager.DeselectPack();
+                _env.NotifyPackSelectionChanged();
             }
 
             var next = _env.Config.SelectedMods.ToList();

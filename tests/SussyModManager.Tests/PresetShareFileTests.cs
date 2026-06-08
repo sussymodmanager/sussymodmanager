@@ -37,7 +37,7 @@ public class PresetShareFileTests
         var preset = new Preset
         {
             Id = "sus-af-pack",
-            Name = "SUS AF PACK",
+            Name = "SUS AF",
             Builtin = true,
             ModIds = new List<string> { "TownOfUs" }
         };

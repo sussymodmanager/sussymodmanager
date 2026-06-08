@@ -53,15 +53,16 @@
                 </StackPanel>
 
                 <StackPanel Grid.Row="2" Spacing="12">
-                    <Button Classes="success" Content="▶  PLAY"
+                    <Button Classes="success" Content="{Binding Installed.PlayButtonLabel}"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                             Command="{Binding Installed.PlayCommand}"
                             IsEnabled="{Binding !Installed.IsBusy}" />
                     <Border Classes="card" Padding="12">
                         <StackPanel Spacing="4">
-                            <TextBlock Text="SUS AF PACK" FontWeight="Bold" FontSize="12"
+                            <TextBlock Text="{Binding Installed.PackSidebarTitle}"
+                                       FontWeight="Bold" FontSize="12"
                                        Foreground="{DynamicResource AccentBrush}" />
-                            <TextBlock Text="One-click the meta loadout in Presets."
+                            <TextBlock Text="{Binding Installed.PackSidebarHint}"
                                        Classes="muted" FontSize="11" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>

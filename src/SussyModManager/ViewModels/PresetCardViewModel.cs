@@ -26,6 +26,18 @@ namespace SussyModManager.ViewModels
         public bool IsUserPreset => !Preset.Builtin;
         public List<string> ModNames { get; }
 
+        public bool IsPackSelected =>
+            string.Equals(_env.Config.ActivePackId, Preset.Id, StringComparison.OrdinalIgnoreCase);
+
+        public bool IsPinned => Preset.Pinned;
+
+        /// <summary>Same featured treatment as store mod cards (pinned built-in packs).</summary>
+        public bool IsFeatured => Preset.Pinned;
+
+        public string PlayButtonLabel => IsPackSelected ? $"▶  Play {Name}" : "▶  Play Pack";
+
+        [ObservableProperty] private string _installCountLabel;
+
         public PresetCardViewModel(AppEnvironment env, Preset preset)
         {
             _env = env;
@@ -33,6 +45,22 @@ namespace SussyModManager.ViewModels
             ModNames = preset.ModIds
                 .Select(id => _env.Store.GetEntry(id)?.name ?? id)
                 .ToList();
+            _env.PackSelectionChanged += (_, _) => RefreshPackState();
+            RefreshInstallCount();
+        }
+
+        public void RefreshPackState()
+        {
+            OnPropertyChanged(nameof(IsPackSelected));
+            OnPropertyChanged(nameof(PlayButtonLabel));
+        }
+
+        public void RefreshInstallCount()
+        {
+            var ids = Preset.ModIds ?? new List<string>();
+            var total = ids.Count;
+            var ready = ids.Count(_env.Manager.IsModReady);
+            InstallCountLabel = $"{ready}/{total} installed";
         }
 
         [RelayCommand]
@@ -47,8 +75,13 @@ namespace SussyModManager.ViewModels
             try
             {
                 _env.SetStatus($"Installing {Name}...");
+                var wasPackSelected = IsPackSelected;
                 var result = await _env.Manager.InstallPresetAsync(Preset).ConfigureAwait(true);
                 _env.SetStatus(result.Message);
+                if (!wasPackSelected && IsPackSelected)
+                    _env.NotifyPackInstalled();
+                else
+                    _env.NotifyModLibraryChanged();
                 await DialogService.ShowResultAsync($"Install {Name}", result).ConfigureAwait(true);
             }
             catch (Exception ex)
@@ -62,20 +95,46 @@ namespace SussyModManager.ViewModels
             }
         }
 
-        /// <summary>Loads this preset's mods as the active selection without launching.</summary>
         [RelayCommand]
-        private async Task Apply()
+        private async Task SelectPackAsync()
         {
-            var installedCount = Preset.ModIds.Count(_env.Manager.IsInstalled);
-            _env.Manager.SetLaunchSelection(Preset.ModIds, syncPlugins: false);
-            if (!string.IsNullOrEmpty(_env.Config.AmongUsPath))
-                await Task.Run(() => _env.Manager.ResyncActivePlugins()).ConfigureAwait(true);
+            if (IsBusy || IsPackSelected)
+                return;
+            if (!await _env.EnsureModOperationsReadyAsync($"select {Name}").ConfigureAwait(true))
+                return;
 
-            var missing = Preset.ModIds.Count - installedCount;
-            _env.SetStatus(missing > 0
-                ? $"Loaded {Name}. {missing} mod(s) aren't installed yet - use Install Pack to get them."
-                : $"Loaded {Name} as your active selection.");
-            _env.RequestNavigation("installed");
+            IsBusy = true;
+            try
+            {
+                _env.SetStatus($"Selecting {Name}...");
+                var result = await _env.Manager.SelectPresetAsync(Preset).ConfigureAwait(true);
+                _env.NotifyPackInstalled();
+                _env.NotifyPackSelectionChanged();
+                _env.SetStatus(result.Success
+                    ? $"Selected {Name}. Hit Play {Name} when you're ready."
+                    : $"Selected {Name} with some install warnings.");
+                await DialogService.ShowResultAsync($"Select {Name}", result).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                _env.SetStatus($"Error selecting {Name}: {ex.Message}");
+                await DialogService.ShowErrorAsync($"Couldn't select {Name}", ex.Message).ConfigureAwait(true);
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        [RelayCommand]
+        private void DeselectPack()
+        {
+            if (!IsPackSelected)
+                return;
+
+            _env.Manager.DeselectPack();
+            _env.NotifyPackSelectionChanged();
+            _env.SetStatus("Pack deselected. Pick your own launch mods on Installed, then hit Play.");
         }
 
         [RelayCommand]
@@ -92,6 +151,7 @@ namespace SussyModManager.ViewModels
             Preset.UpdatedUtcTicks = DateTime.UtcNow.Ticks;
             _env.Save();
             OnPropertyChanged(nameof(Name));
+            OnPropertyChanged(nameof(PlayButtonLabel));
             _env.SetStatus($"Renamed preset to {newName}.");
             Changed?.Invoke(this, EventArgs.Empty);
         }
@@ -106,8 +166,12 @@ namespace SussyModManager.ViewModels
                     yes: "Delete", no: "Cancel", danger: true).ConfigureAwait(true))
                 return;
 
+            if (IsPackSelected)
+                _env.Manager.DeselectPack();
+
             _env.Config.UserPresets.RemoveAll(p => string.Equals(p.Id, Preset.Id, StringComparison.OrdinalIgnoreCase));
             _env.Save();
+            _env.NotifyPackSelectionChanged();
             _env.SetStatus($"Deleted preset {Name}.");
             Changed?.Invoke(this, EventArgs.Empty);
         }
@@ -144,9 +208,13 @@ namespace SussyModManager.ViewModels
             IsBusy = true;
             try
             {
-                _env.SetStatus($"Launching {Name}...");
-                await _env.Manager.PlayPresetAsync(Preset).ConfigureAwait(true);
-                _env.SetStatus($"Launched {Name}. Have fun!");
+                var preset = _env.Presets.ResolveFreshPreset(Preset, _env.Config);
+                _env.SetStatus($"Launching {preset.Name}...");
+                var result = await _env.Manager.PlayPresetAsync(preset).ConfigureAwait(true);
+                _env.NotifyPackSelectionChanged();
+                _env.NotifyModLibraryChanged();
+                _env.SetStatus(result.Message);
+                await DialogService.ShowResultAsync($"Play {preset.Name}", result).ConfigureAwait(true);
             }
             catch (Exception ex)
             {

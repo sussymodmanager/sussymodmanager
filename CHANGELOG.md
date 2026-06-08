@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- **Settings troubleshooting:** Reactor/interop status, repair interop, interop reference folder, open app data / BepInEx log, manual store refresh.
+- **Store filters:** Not installed / Installed / Has update.
+- **Presets:** TOHE built-in pack; SUS AF pinned with FEATURED badge; install counts (`5/7 installed`) based on files on disk.
+- **Play sync:** Pack play surfaces install/update warnings in a dialog instead of failing silently.
+- **AutoUpdateMods:** Toggle now gates startup update checks only (badges, not auto-install). Label clarifies behavior.
+- **Installed page:** Refreshes live after install, uninstall, update, or pack play without switching tabs.
+- **Proton reminder:** “Remind me later” snoozes for 7 days; “Got it” dismisses permanently.
+- **Registry:** Explicit DLL filters for AUnlocker, TownOfUsMira, and TOHE pack mods.
+- **Install vs Select Pack:** Install = refresh + missing mods only; Select = refresh + missing + pack mode. Wizard uses Select. First SUS AF **Install Pack** also selects the pack (once), so skipping the wizard still activates it for Play.
+- **AutoUpdateMods:** Defaults on unless explicitly opted out; Installed first-visit check respects the toggle.
+- **Background refresh:** Failed GitHub store refresh shows a status message instead of failing silently.
+
 ## 1.0.4 — 2026-06-05
 
 Fixes the launch regression where only part of your mod list actually loaded into the game. TOU pack assets no longer wipe out other plugins on startup, and single-DLL mods with subfolders land in `BepInEx/plugins` where they belong.

@@ -29,10 +29,20 @@
                                     <StackPanel Orientation="Horizontal" Spacing="10">
                                         <TextBlock Text="{Binding Name}" Classes="h2" />
                                         <Border Classes="badge" VerticalAlignment="Center"
+                                                IsVisible="{Binding IsFeatured}">
+                                            <TextBlock Text="FEATURED" />
+                                        </Border>
+                                        <Border Classes="badge" VerticalAlignment="Center"
                                                 IsVisible="{Binding IsBuiltin}">
                                             <TextBlock Text="BUILT-IN" />
                                         </Border>
+                                        <Border Classes="badge" VerticalAlignment="Center"
+                                                Background="{DynamicResource AccentBrush}"
+                                                IsVisible="{Binding IsPackSelected}">
+                                            <TextBlock Text="SELECTED" Foreground="White" />
+                                        </Border>
                                     </StackPanel>
+                                    <TextBlock Text="{Binding InstallCountLabel}" Classes="muted" FontSize="12" />
                                     <TextBlock Text="{Binding Description}" Classes="muted"
                                                TextWrapping="Wrap" MaxWidth="640" HorizontalAlignment="Left" />
                                     <ItemsControl ItemsSource="{Binding ModNames}">
@@ -55,7 +65,8 @@
 
                                 <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center"
                                             Margin="16,0,0,0" Width="150">
-                                    <Button Classes="accent" Content="▶  Play Pack"
+                                    <Button Classes="success"
+                                            Content="{Binding PlayButtonLabel}"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Command="{Binding PlayCommand}"
                                             IsEnabled="{Binding !IsBusy}" />
@@ -63,9 +74,15 @@
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Command="{Binding InstallCommand}"
                                             IsEnabled="{Binding !IsBusy}" />
-                                    <Button Classes="ghost" Content="Load selection"
+                                    <Button Classes="accent" Content="Select Pack"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Command="{Binding ApplyCommand}"
+                                            Command="{Binding SelectPackCommand}"
+                                            IsVisible="{Binding !IsPackSelected}"
+                                            IsEnabled="{Binding !IsBusy}" />
+                                    <Button Classes="ghost" Content="Deselect Pack"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Command="{Binding DeselectPackCommand}"
+                                            IsVisible="{Binding IsPackSelected}"
                                             IsEnabled="{Binding !IsBusy}" />
                                     <Button Classes="ghost" Content="Export"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"

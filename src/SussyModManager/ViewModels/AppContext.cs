@@ -1,5 +1,7 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
+using SussyModManager.Core.Helpers;
 using SussyModManager.Core.Models;
 using SussyModManager.Core.Services;
 using SussyModManager.Services;
@@ -12,6 +14,10 @@ namespace SussyModManager.ViewModels
     /// </summary>
     public class AppEnvironment
     {
+        private readonly SynchronizationContext _uiContext;
+        private readonly object _idleLock = new object();
+        private CancellationTokenSource _idleCts;
+
         public Config Config { get; }
         public ModManager Manager { get; }
         public ModStore Store => Manager.Store;
@@ -23,20 +29,134 @@ namespace SussyModManager.ViewModels
         /// <summary>Raised when a view model wants the shell to switch tabs (e.g. open Settings).</summary>
         public event EventHandler<string> NavigationRequested;
 
+        /// <summary>Raised when pack mode is turned on or off (Select / Deselect pack).</summary>
+        public event EventHandler PackSelectionChanged;
+
+        /// <summary>Raised after mod-registry / presets are refreshed from GitHub.</summary>
+        public event EventHandler StoreCatalogRefreshed;
+
         public AppEnvironment(Config config, ColorProfileService profiles)
         {
             Config = config;
             Profiles = profiles;
             Presets = new PresetService();
-            Manager = new ModManager(config);
-            Manager.Progress += (_, message) => SetStatus(message);
+            Manager = new ModManager(config, presets: Presets);
+            _uiContext = SynchronizationContext.Current;
+            Manager.Progress += (_, message) => SetProgress(message);
         }
 
-        public void SetStatus(string message) => StatusChanged?.Invoke(this, message);
+        /// <summary>User-facing status that should stay until the next action.</summary>
+        public void SetStatus(string message)
+        {
+            CancelIdleRestore();
+            RaiseStatus(message);
+        }
+
+        /// <summary>Short-lived progress from background work; returns to idle shortly after it stops.</summary>
+        public void SetProgress(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return;
+
+            RaiseStatus(message);
+            ScheduleIdleRestore(delayMs: 2000);
+        }
+
+        public string GetIdleStatus()
+        {
+            if (Manager.IsPackModeActive)
+            {
+                var name = Manager.GetActivePackName();
+                if (!string.IsNullOrWhiteSpace(name))
+                    return $"Ready — hit Play {name} when you want.";
+            }
+
+            return "Ready to go.";
+        }
+
+        public void RestoreIdleStatus() => SetStatus(GetIdleStatus());
 
         public void RequestNavigation(string tab) => NavigationRequested?.Invoke(this, tab);
 
+        public void NotifyPackSelectionChanged() => PackSelectionChanged?.Invoke(this, EventArgs.Empty);
+
+        /// <summary>After install or explicit select — refresh pack UI and installed mod cards.</summary>
+        public void NotifyPackInstalled() => NotifyModLibraryChanged();
+
+        /// <summary>Raised when the mod library changed (install, uninstall, update, pack sync).</summary>
+        public void NotifyModLibraryChanged() => ModLibraryChanged?.Invoke(this, EventArgs.Empty);
+
+        public event EventHandler ModLibraryChanged;
+
+        /// <summary>Obsolete alias — use <see cref="ModLibraryChanged"/>.</summary>
+        public event EventHandler InstalledNeedsRefresh
+        {
+            add => ModLibraryChanged += value;
+            remove => ModLibraryChanged -= value;
+        }
+
         public void Save() => Config.Save();
+
+        public async Task<bool> RefreshStoreCatalogAsync()
+        {
+            var changed = await DataStore.RefreshAsync().ConfigureAwait(false);
+            Manager.Store.Reload();
+            StoreCatalogRefreshed?.Invoke(this, EventArgs.Empty);
+            return changed;
+        }
+
+        /// <summary>Checks remote mod versions when <see cref="Config.AutoUpdateMods"/> is enabled.</summary>
+        public async Task<System.Collections.Generic.List<ModUpdateInfo>> CheckModUpdatesIfEnabledAsync()
+        {
+            if (!Config.AutoUpdateMods)
+                return null;
+
+            return await Manager.CheckForUpdatesAsync().ConfigureAwait(false);
+        }
+
+        private void RaiseStatus(string message) => StatusChanged?.Invoke(this, message);
+
+        private void CancelIdleRestore()
+        {
+            lock (_idleLock)
+            {
+                _idleCts?.Cancel();
+                _idleCts?.Dispose();
+                _idleCts = null;
+            }
+        }
+
+        private void ScheduleIdleRestore(int delayMs)
+        {
+            CancellationToken token;
+            lock (_idleLock)
+            {
+                _idleCts?.Cancel();
+                _idleCts?.Dispose();
+                _idleCts = new CancellationTokenSource();
+                token = _idleCts.Token;
+            }
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(delayMs, token).ConfigureAwait(false);
+                    PostToUi(() => RaiseStatus(GetIdleStatus()));
+                }
+                catch (OperationCanceledException)
+                {
+                }
+            });
+        }
+
+        private void PostToUi(Action action)
+        {
+            if (_uiContext != null)
+                _uiContext.Post(_ => action(), null);
+            else
+                action();
+        }
 
         /// <summary>
         /// Applies a detected game location to config and returns a user-facing status message.

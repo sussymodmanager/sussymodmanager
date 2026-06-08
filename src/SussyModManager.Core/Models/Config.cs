@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -15,8 +16,24 @@ namespace SussyModManager.Core.Models
         public List<string> SelectedMods { get; set; } = new List<string>();
         public List<Preset> UserPresets { get; set; } = new List<Preset>();
 
-        public bool AutoUpdateMods { get; set; }
+        /// <summary>When set, pack mode is on: Play syncs this pack 1:1 with auto-updates.</summary>
+        public string ActivePackId { get; set; }
+
+        /// <summary>After the first successful SUS AF Install Pack auto-select, do not auto-select again.</summary>
+        public bool SusAfInstallPackAutoSelectDone { get; set; }
+
+        public bool AutoUpdateMods { get; set; } = true;
+
+        /// <summary>True only when the user explicitly disabled startup mod update checks.</summary>
+        public bool AutoUpdateModsOptOut { get; set; }
+
         public bool ShowBetaVersions { get; set; }
+
+        /// <summary>User dismissed the Linux/macOS Proton launch-options reminder.</summary>
+        public bool ProtonLaunchWarningDismissed { get; set; }
+
+        /// <summary>Utc ticks until which the Proton reminder is snoozed ("Remind me later").</summary>
+        public long ProtonLaunchWarningSnoozedUtcTicks { get; set; }
 
         // Automatically download + apply SUSSYMODMANAGER app updates from GitHub. On by default.
         public bool AutoUpdateApp { get; set; } = true;
@@ -64,7 +81,8 @@ namespace SussyModManager.Core.Models
             {
                 if (File.Exists(ConfigPath))
                 {
-                    var config = Json.Deserialize<Config>(File.ReadAllText(ConfigPath));
+                    var raw = File.ReadAllText(ConfigPath);
+                    var config = Json.Deserialize<Config>(raw);
                     if (config != null)
                     {
                         config.InstalledMods ??= new List<InstalledMod>();
@@ -74,6 +92,8 @@ namespace SussyModManager.Core.Models
                             config.DataPath = PlatformInfo.DataRoot;
                         if (string.IsNullOrWhiteSpace(config.ActiveColorProfileId))
                             config.ActiveColorProfileId = "sus-default";
+                        // On by default. Older configs saved false before opt-out tracking — ignore that.
+                        config.AutoUpdateMods = !config.AutoUpdateModsOptOut;
                         return config;
                     }
                 }

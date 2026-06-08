@@ -80,5 +80,31 @@ namespace SussyModManager.Core.Helpers
                 return null;
             }
         }
+
+        /// <summary>Short read-only label for Settings (no launch required).</summary>
+        public static string GetInteropStatusLabel(string amongUsPath)
+        {
+            if (string.IsNullOrWhiteSpace(amongUsPath))
+                return "Set your Among Us folder first.";
+
+            var bep = Path.Combine(amongUsPath, "BepInEx");
+            if (!Directory.Exists(bep))
+                return "BepInEx not installed yet.";
+
+            if (InteropReference.HasWorkingInterop(amongUsPath))
+                return "Il2Cpp interop looks compatible with Reactor.";
+
+            var preLaunch = GetPreLaunchReactorIssue(amongUsPath, reactorRequired: true);
+            if (!string.IsNullOrEmpty(preLaunch))
+                return "Interop may be incompatible after a game update.";
+
+            if (!string.IsNullOrEmpty(GetLastLogReactorFailure(amongUsPath)))
+                return "Last launch: Reactor failed to load — check the log.";
+
+            var interopDll = Path.Combine(amongUsPath, "BepInEx", "interop", "Assembly-CSharp.dll");
+            return File.Exists(interopDll)
+                ? "Interop folder present; compatibility not verified."
+                : "Interop folder missing.";
+        }
     }
 }

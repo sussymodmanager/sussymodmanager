@@ -70,6 +70,9 @@ namespace SussyModManager
                         catch (Exception ex)
                         {
                             Log.Error("Background mod-store refresh failed.", ex);
+                            await Dispatcher.UIThread.InvokeAsync(() =>
+                                mainViewModel.SetStatus(
+                                    "Could not refresh mod store from GitHub — using bundled/cached data."));
                         }
                     });
                 }

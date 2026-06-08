@@ -31,7 +31,7 @@
                 <StackPanel Spacing="14" IsVisible="{Binding IsWelcome}">
                     <TextBlock Text="Welcome, crewmate" Classes="h2" />
                     <TextBlock Classes="muted" TextWrapping="Wrap"
-                               Text="SUSSYMODMANAGER installs and manages Among Us mods across Windows, macOS and Linux. We'll point it at your game, pick a look, and optionally drop in the SUS AF PACK." />
+                               Text="SUSSYMODMANAGER installs and manages Among Us mods across Windows, macOS and Linux. We'll point it at your game, pick a look, and optionally drop in SUS AF." />
                     <TextBlock Classes="muted" TextWrapping="Wrap"
                                Text="You can change everything later in Settings." />
                 </StackPanel>
@@ -94,8 +94,8 @@
                 <StackPanel Spacing="14" IsVisible="{Binding IsPackStep}">
                     <TextBlock Text="One-click the meta" Classes="h2" />
                     <TextBlock Classes="muted" TextWrapping="Wrap"
-                               Text="The SUS AF PACK bundles Town of Us Mira, role extensions and the essentials, with all dependencies handled for you." />
-                    <CheckBox Content="Install the SUS AF PACK now"
+                               Text="SUS AF bundles Town of Us Mira, role extensions and the essentials, with all dependencies handled for you." />
+                    <CheckBox Content="Install SUS AF now"
                               IsChecked="{Binding InstallPack}"
                               Foreground="{DynamicResource TextPrimaryBrush}" />
                     <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsBusy}">

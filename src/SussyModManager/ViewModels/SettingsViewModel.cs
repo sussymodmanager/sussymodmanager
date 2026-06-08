@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using SussyModManager.Core;
 using SussyModManager.Core.Helpers;
 using SussyModManager.Core.Models;
+using System.IO;
 using SussyModManager.Core.Platform;
 using SussyModManager.Core.Services;
 using SussyModManager.Services;
@@ -29,8 +30,13 @@ namespace SussyModManager.ViewModels
         [ObservableProperty] private string _platformLabel;
         [ObservableProperty] private bool _armDangerZone;
         [ObservableProperty] private bool _autoUpdateApp;
+        [ObservableProperty] private bool _autoUpdateMods;
         [ObservableProperty] private string _appVersionLabel;
         [ObservableProperty] private string _updateStatus;
+        [ObservableProperty] private string _interopStatus;
+        [ObservableProperty] private bool _showProtonReminder;
+        [ObservableProperty] private string _storeRefreshStatus;
+        [ObservableProperty] private string _interopReferencePath;
 
         private readonly AppUpdateService _appUpdates = new AppUpdateService();
 
@@ -44,13 +50,17 @@ namespace SussyModManager.ViewModels
             _env = env;
             Editor.LoadFrom(env.Profiles.GetProfileOrDefault(env.Config.ActiveColorProfileId));
             AmongUsPath = env.Config.AmongUsPath;
+            InteropReferencePath = env.Config.InteropReferencePath;
             SelectedChannel = env.Config.GameChannel ?? GameChannels.Steam;
             ShowBetaVersions = env.Config.ShowBetaVersions;
             AutoUpdateApp = env.Config.AutoUpdateApp;
+            AutoUpdateMods = env.Config.AutoUpdateMods;
             AppVersionLabel = $"SUSSYMODMANAGER v{AppInfo.Version}";
             UpdateStatus = AppInfo.RepoConfigured ? "" : "Set your GitHub repo in AppInfo.cs to enable updates.";
             PlatformLabel = $"{PlatformInfo.Os} ({PlatformInfo.ProcessArchitecture})";
+            RefreshProtonReminder();
             RefreshBepInEx();
+            RefreshInteropStatus();
             ReloadProfiles();
         }
 
@@ -58,6 +68,18 @@ namespace SussyModManager.ViewModels
         {
             _env.Config.AutoUpdateApp = value;
             _env.Save();
+        }
+
+        partial void OnAutoUpdateModsChanged(bool value)
+        {
+            _env.Config.AutoUpdateMods = value;
+            _env.Config.AutoUpdateModsOptOut = !value;
+            _env.Save();
+        }
+
+        public void RefreshInteropStatus()
+        {
+            InteropStatus = BepInExInteropDiagnostics.GetInteropStatusLabel(AmongUsPath ?? _env.Config.AmongUsPath);
         }
 
         [RelayCommand]
@@ -142,6 +164,134 @@ namespace SussyModManager.ViewModels
         }
 
         [RelayCommand]
+        private void OpenAmongUsFolder()
+        {
+            var path = AmongUsPath?.Trim();
+            if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
+            {
+                _env.SetStatus("Set a valid Among Us folder first.");
+                return;
+            }
+
+            SystemLauncher.OpenFolder(path);
+        }
+
+        [RelayCommand]
+        private void OpenAppDataFolder() => SystemLauncher.OpenFolder(PlatformInfo.DataRoot);
+
+        [RelayCommand]
+        private void OpenBepInExLog()
+        {
+            var path = AmongUsPath?.Trim();
+            if (string.IsNullOrEmpty(path))
+            {
+                _env.SetStatus("Set a valid Among Us folder first.");
+                return;
+            }
+
+            var log = Path.Combine(path, "BepInEx", "LogOutput.log");
+            if (!File.Exists(log))
+            {
+                _env.SetStatus("No BepInEx log yet — launch the game once with mods.");
+                return;
+            }
+
+            SystemLauncher.OpenFolder(Path.GetDirectoryName(log));
+        }
+
+        [RelayCommand]
+        private async Task ShowTroubleshootingAsync()
+        {
+            RefreshInteropStatus();
+            await Views.TroubleshootingWindow.ShowAsync(this).ConfigureAwait(true);
+        }
+
+        [RelayCommand]
+        private async Task RefreshStoreCatalogAsync()
+        {
+            if (IsBusy)
+                return;
+            IsBusy = true;
+            StoreRefreshStatus = "Refreshing mod store from GitHub...";
+            try
+            {
+                var changed = await _env.RefreshStoreCatalogAsync().ConfigureAwait(true);
+                StoreRefreshStatus = changed
+                    ? "Store and presets updated from GitHub."
+                    : "Already up to date with GitHub.";
+                _env.SetStatus(StoreRefreshStatus);
+            }
+            catch (Exception ex)
+            {
+                StoreRefreshStatus = $"Refresh failed: {ex.Message}";
+                _env.SetStatus(StoreRefreshStatus);
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        public void RefreshProtonReminder() =>
+            ShowProtonReminder = ProtonReminder.ShouldShow(_env.Config);
+
+        [RelayCommand]
+        private async Task DismissProtonReminderAsync()
+        {
+            ProtonReminder.DismissPermanently(_env.Config);
+            RefreshProtonReminder();
+            await Task.CompletedTask.ConfigureAwait(true);
+        }
+
+        [RelayCommand]
+        private void RepairInterop()
+        {
+            var path = AmongUsPath?.Trim();
+            if (string.IsNullOrEmpty(path))
+            {
+                _env.SetStatus("Set a valid Among Us folder first.");
+                return;
+            }
+
+            _env.Config.AmongUsPath = path;
+            _env.Manager.EnsureWorkingInterop();
+            RefreshInteropStatus();
+
+            _env.SetStatus(InteropReference.HasWorkingInterop(path)
+                ? "Interop restored from manager cache or your reference install."
+                : "Could not repair interop — set a reference Among Us folder below or reinstall BepInEx.");
+        }
+
+        [RelayCommand]
+        private void SaveInteropReference()
+        {
+            var path = InteropReferencePath?.Trim();
+            if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
+            {
+                _env.SetStatus("Pick a valid Among Us folder for the interop reference.");
+                return;
+            }
+
+            if (!InteropReference.HasWorkingInterop(path))
+            {
+                _env.SetStatus("That folder does not have a working BepInEx interop folder yet.");
+                return;
+            }
+
+            _env.Manager.CacheInteropReference(path);
+            InteropReferencePath = _env.Config.InteropReferencePath;
+            RefreshInteropStatus();
+            _env.SetStatus("Saved interop reference and cached it for future repairs.");
+        }
+
+        public void SetInteropReferencePath(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return;
+            InteropReferencePath = path;
+        }
+
+        [RelayCommand]
         private async Task Detect()
         {
             if (IsBusy)
@@ -181,6 +331,7 @@ namespace SussyModManager.ViewModels
             _env.Config.AmongUsPath = AmongUsPath;
             _env.Save();
             RefreshBepInEx();
+            RefreshInteropStatus();
 
             if (!string.IsNullOrWhiteSpace(AmongUsPath) && !AmongUsLocator.CanModifyGameFolder(AmongUsPath))
             {

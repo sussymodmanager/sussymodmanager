@@ -12,7 +12,7 @@ using SussyModManager.Services;
 namespace SussyModManager.ViewModels
 {
     /// <summary>
-    /// Drives the first-launch onboarding flow: welcome -> game path -> theme -> optional SUS AF PACK.
+    /// Drives the first-launch onboarding flow: welcome -> game path -> theme -> optional SUS AF.
     /// </summary>
     public partial class WizardViewModel : ViewModelBase
     {
@@ -181,21 +181,20 @@ namespace SussyModManager.ViewModels
                 {
                     // Fresh installs start with an empty store cache and fall back to the data files
                     // bundled in the release, which can lag behind the live pack definition. Pull the
-                    // latest from GitHub first so onboarding always installs the current SUS AF PACK
+                    // latest from GitHub first so onboarding always installs the current SUS AF pack
                     // (and not mods we've since removed) rather than racing the background refresh.
-                    BusyStatus = "Fetching the latest SUS AF PACK...";
-                    try { await DataStore.RefreshAsync().ConfigureAwait(true); } catch { }
-
                     var pack = _env.Presets.GetAllPresets(_env.Config)
-                        .FirstOrDefault(p => p.Builtin);
+                        .FirstOrDefault(p => string.Equals(p.Id, "sus-af-pack", StringComparison.OrdinalIgnoreCase))
+                        ?? _env.Presets.GetAllPresets(_env.Config).FirstOrDefault(p => p.Builtin);
                     if (pack != null)
                     {
-                        BusyStatus = $"Installing {pack.Name}...";
+                        BusyStatus = $"Installing and selecting {pack.Name}...";
                         _env.Manager.Progress += OnPackProgress;
                         try
                         {
-                            var result = await _env.Manager.InstallPresetAsync(pack).ConfigureAwait(true);
+                            var result = await _env.Manager.SelectPresetAsync(pack).ConfigureAwait(true);
                             _env.SetStatus(result.Message);
+                            _env.NotifyPackInstalled();
                             await DialogService.ShowResultAsync($"Install {pack.Name}", result).ConfigureAwait(true);
                         }
                         finally

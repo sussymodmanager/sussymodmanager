@@ -7,17 +7,20 @@
 
     <Grid RowDefinitions="Auto,Auto,*" Margin="28,24,28,16">
 
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-            <StackPanel Grid.Column="0" Spacing="2">
-                <TextBlock Text="{Binding Title}" Classes="h1" />
-                <TextBlock Text="{Binding Subtitle}" Classes="muted" />
-            </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                <Button Classes="ghost" Content="Launch Vanilla" Command="{Binding PlayVanillaCommand}" />
-                <Button Classes="success" Content="▶  PLAY" Command="{Binding PlayCommand}"
-                        IsEnabled="{Binding !IsBusy}" />
-            </StackPanel>
-        </Grid>
+        <StackPanel Grid.Row="0" Spacing="6">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding Title}" Classes="h1" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Button Classes="ghost" Content="Deselect Pack" Command="{Binding DeselectPackCommand}"
+                            IsVisible="{Binding IsPackMode}" />
+                    <Button Classes="ghost" Content="Launch Vanilla" Command="{Binding PlayVanillaCommand}" />
+                    <Button Classes="success" Content="{Binding PlayButtonLabel}" Command="{Binding PlayCommand}"
+                            IsEnabled="{Binding !IsBusy}" />
+                </StackPanel>
+            </Grid>
+            <TextBlock Text="{Binding Subtitle}" Classes="muted" TextWrapping="Wrap"
+                       HorizontalAlignment="Left" MaxWidth="720" />
+        </StackPanel>
 
         <StackPanel Grid.Row="1" Spacing="6" Margin="0,16,0,12">
             <StackPanel Orientation="Horizontal" Spacing="10">
@@ -54,7 +57,7 @@
             <StackPanel IsVisible="{Binding HasNoMods}" HorizontalAlignment="Center"
                         VerticalAlignment="Center" Spacing="12">
                 <TextBlock Text="No mods installed yet" Classes="h2" HorizontalAlignment="Center" />
-                <TextBlock Text="Head to the Mod Store or grab the SUS AF PACK in Presets."
+                <TextBlock Text="Head to the Mod Store or grab SUS AF in Presets."
                            Classes="muted" HorizontalAlignment="Center" />
                 <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
                     <Button Classes="accent" Content="Browse Mod Store" Command="{Binding GoToStoreCommand}" />

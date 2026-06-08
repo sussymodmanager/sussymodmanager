@@ -1,0 +1,60 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SussyModManager.ViewModels"
+        x:Class="SussyModManager.Views.TroubleshootingWindow"
+        x:DataType="vm:SettingsViewModel"
+        Width="520" SizeToContent="Height" MaxHeight="720"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BackgroundBrush}"
+        Icon="/Assets/sus.ico"
+        Title="Troubleshooting">
+
+    <ScrollViewer MaxHeight="680">
+        <Border Classes="card" Margin="18" Padding="22">
+            <StackPanel Spacing="14">
+                <TextBlock Text="Troubleshooting" Classes="h2" />
+                <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                           Text="Diagnostics and repair tools. Your game files are not modified except when you run Repair interop." />
+
+                <Grid ColumnDefinitions="Auto,*">
+                    <TextBlock Grid.Column="0" Text="Reactor / interop:" Classes="muted" VerticalAlignment="Top" />
+                    <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="{Binding InteropStatus}"
+                               Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" />
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button Classes="ghost" Content="Repair interop" Command="{Binding RepairInteropCommand}"
+                            IsEnabled="{Binding !IsBusy}" />
+                    <Button Classes="ghost" Content="Open app data" Command="{Binding OpenAppDataFolderCommand}" />
+                    <Button Classes="ghost" Content="Open BepInEx log" Command="{Binding OpenBepInExLogCommand}" />
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Interop reference install (optional)" Classes="muted" />
+                    <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                               Text="Another Among Us folder with working BepInEx interop. Repair interop uses this when the manager cache is empty." />
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBox Grid.Column="0" Text="{Binding InteropReferencePath}"
+                                 Watermark="Path to reference Among Us install" />
+                        <Button Grid.Column="1" Classes="ghost" Content="Browse" Margin="8,0,0,0"
+                                Click="OnBrowseInteropReference" />
+                        <Button Grid.Column="2" Classes="accent" Content="Save" Margin="8,0,0,0"
+                                Command="{Binding SaveInteropReferenceCommand}" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Mod store" Classes="muted" />
+                    <Button Classes="ghost" Content="Refresh store from GitHub"
+                            Command="{Binding RefreshStoreCatalogCommand}" IsEnabled="{Binding !IsBusy}"
+                            HorizontalAlignment="Left" />
+                    <TextBlock Text="{Binding StoreRefreshStatus}" Classes="muted" FontSize="12" TextWrapping="Wrap"
+                               IsVisible="{Binding StoreRefreshStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+
+                <Button Classes="accent" Content="Close" HorizontalAlignment="Right" Click="OnClose" />
+            </StackPanel>
+        </Border>
+    </ScrollViewer>
+</Window>

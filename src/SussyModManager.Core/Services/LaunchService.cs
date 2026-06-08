@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using SussyModManager.Core.Platform;
 
 namespace SussyModManager.Core.Services
@@ -26,6 +27,38 @@ namespace SussyModManager.Core.Services
         {
             Report("Launching Among Us (vanilla)...");
             Launch(amongUsPath);
+        }
+
+        /// <summary>Starts a sidecar utility (e.g. Better CrewLink) from the mod storage folder.</summary>
+        public void LaunchUtility(string modStoragePath, string executableName, string displayName)
+        {
+            if (string.IsNullOrWhiteSpace(modStoragePath) || string.IsNullOrWhiteSpace(executableName))
+                return;
+
+            var exePath = Directory.Exists(modStoragePath)
+                ? Directory.GetFiles(modStoragePath, executableName, SearchOption.AllDirectories).FirstOrDefault()
+                : null;
+
+            if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
+            {
+                Report($"Could not find {displayName} ({executableName}). Reinstall it from the mod store.");
+                return;
+            }
+
+            try
+            {
+                Report($"Starting {displayName}...");
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = exePath,
+                    WorkingDirectory = Path.GetDirectoryName(exePath) ?? modStoragePath,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                Report($"Could not start {displayName}: {ex.Message}");
+            }
         }
 
         private void Launch(string amongUsPath)

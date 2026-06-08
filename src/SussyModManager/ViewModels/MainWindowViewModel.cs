@@ -1,8 +1,13 @@
 using System;
+using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SussyModManager.Core.Helpers;
 using SussyModManager.Core.Models;
+using SussyModManager.Core.Platform;
 using SussyModManager.Core.Services;
+using SussyModManager.Services;
 
 namespace SussyModManager.ViewModels
 {
@@ -16,7 +21,7 @@ namespace SussyModManager.ViewModels
         public SettingsViewModel Settings { get; }
 
         [ObservableProperty] private ViewModelBase _currentPage;
-        [ObservableProperty] private string _statusText = "Ready.";
+        [ObservableProperty] private string _statusText;
         [ObservableProperty] private bool _statusIsError;
         [ObservableProperty] private string _activeTab = "store";
 
@@ -51,6 +56,7 @@ namespace SussyModManager.ViewModels
             Store.RefreshStates();
             Installed.Reload();
             Presets.Reload();
+            Installed.RefreshPackMode();
             _env.SetStatus("All set. Welcome to SUSSYMODMANAGER!");
         }
 
@@ -63,6 +69,15 @@ namespace SussyModManager.ViewModels
 
             _env.StatusChanged += (_, message) => SetStatus(message);
             _env.NavigationRequested += (_, tab) => Navigate(tab);
+            _env.PackSelectionChanged += (_, _) =>
+            {
+                Installed.RefreshPackMode();
+                Installed.RefreshCardStates();
+                Presets.RefreshInstallCounts();
+                SetStatus(_env.GetIdleStatus());
+            };
+            _env.ModLibraryChanged += (_, _) => RefreshModLibraryUi();
+            _env.StoreCatalogRefreshed += (_, _) => OnStoreCatalogRefreshed();
 
             Store = new StoreViewModel(_env);
             Installed = new InstalledViewModel(_env);
@@ -70,6 +85,7 @@ namespace SussyModManager.ViewModels
             Settings = new SettingsViewModel(_env);
 
             CurrentPage = Store;
+            SetStatus(_env.GetIdleStatus());
 
             if (string.IsNullOrEmpty(config.AmongUsPath))
                 _ = AutoDetectGameAsync();
@@ -77,6 +93,77 @@ namespace SussyModManager.ViewModels
                 SetStatus("Importing mods from BeanModManager...");
 
             _ = CheckForAppUpdateAsync();
+            _ = RunStartupTasksAsync();
+        }
+
+        private async Task RunStartupTasksAsync()
+        {
+            await ShowProtonWarningIfNeededAsync().ConfigureAwait(true);
+
+            if (!_env.Config.AutoUpdateMods)
+                return;
+
+            try
+            {
+                var updates = await _env.CheckModUpdatesIfEnabledAsync().ConfigureAwait(true);
+                ApplyModUpdateBadges(updates);
+            }
+            catch (Exception ex)
+            {
+                SetStatus($"Mod update check failed: {ex.Message}");
+            }
+        }
+
+        private async Task ShowProtonWarningIfNeededAsync()
+        {
+            if (!ProtonReminder.ShouldShow(_env.Config))
+                return;
+
+            var dismiss = await DialogService.ConfirmAsync(
+                "Steam / Proton launch options",
+                "On Linux and macOS, Among Us must launch through Steam with compatible Proton or Wine settings, or BepInEx mods may fail to load.\n\n" +
+                "If mods break after a game update, reinstall BepInEx from Settings and check the BepInEx log.\n\n" +
+                "Don't show this reminder again?",
+                yes: "Got it", no: "Remind me later").ConfigureAwait(true);
+
+            if (dismiss)
+            {
+                ProtonReminder.DismissPermanently(_env.Config);
+                Settings.RefreshProtonReminder();
+                return;
+            }
+
+            ProtonReminder.Snooze(_env.Config);
+            Settings.RefreshProtonReminder();
+        }
+
+        public void RefreshModLibraryUi()
+        {
+            Installed.Reload();
+            Installed.RefreshPackMode();
+            Presets.Reload();
+            Store.RefreshStates();
+        }
+
+        private void ApplyModUpdateBadges(System.Collections.Generic.IReadOnlyList<ModUpdateInfo> updates)
+        {
+            if (updates == null)
+                return;
+
+            Store.ApplyUpdateInfo(updates);
+
+            foreach (var card in Installed.Installed)
+            {
+                if (card.IsCustom)
+                    continue;
+                var info = updates.FirstOrDefault(u =>
+                    string.Equals(u.ModId, card.Id, StringComparison.OrdinalIgnoreCase));
+                if (info != null)
+                {
+                    card.HasUpdate = info.HasUpdate;
+                    card.LatestVersion = info.LatestVersion;
+                }
+            }
         }
 
         private async System.Threading.Tasks.Task AutoDetectGameAsync()
@@ -143,12 +230,16 @@ namespace SussyModManager.ViewModels
                 || message.IndexOf("warning", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        public void OnStoreDataRefreshed()
+        public void OnStoreDataRefreshed() => OnStoreCatalogRefreshed(showStatus: true);
+
+        public void OnStoreCatalogRefreshed(bool showStatus = false)
         {
             _env.Manager.Store.Reload();
             Store.Reload();
             Presets.Reload();
-            _env.SetStatus("Mod store updated from GitHub.");
+            Settings.RefreshInteropStatus();
+            if (showStatus)
+                _env.SetStatus("Mod store updated from GitHub.");
         }
 
         [RelayCommand]
@@ -173,6 +264,8 @@ namespace SussyModManager.ViewModels
             {
                 case "store":
                     Store.RefreshStates();
+                    if (_env.Config.AutoUpdateMods)
+                        _ = Store.RefreshUpdateBadgesAsync();
                     CurrentPage = Store;
                     break;
                 case "installed":
@@ -185,6 +278,7 @@ namespace SussyModManager.ViewModels
                     break;
                 case "settings":
                     Settings.ReloadProfiles();
+                    Settings.RefreshInteropStatus();
                     CurrentPage = Settings;
                     break;
             }

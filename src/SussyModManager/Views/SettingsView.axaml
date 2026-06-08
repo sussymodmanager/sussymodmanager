@@ -20,14 +20,16 @@
 
                     <StackPanel Spacing="6">
                         <TextBlock Text="Among Us folder" Classes="muted" />
-                        <Grid ColumnDefinitions="*,Auto,Auto,Auto" >
+                        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" >
                             <TextBox Grid.Column="0" Text="{Binding AmongUsPath}"
                                      Watermark="Path to your Among Us install folder" />
                             <Button Grid.Column="1" Classes="ghost" Content="Browse"
                                     Margin="8,0,0,0" Click="OnBrowse" />
-                            <Button Grid.Column="2" Classes="ghost" Content="Detect"
+                            <Button Grid.Column="2" Classes="ghost" Content="Open"
+                                    Margin="8,0,0,0" Command="{Binding OpenAmongUsFolderCommand}" />
+                            <Button Grid.Column="3" Classes="ghost" Content="Detect"
                                     Margin="8,0,0,0" Command="{Binding DetectCommand}" />
-                            <Button Grid.Column="3" Classes="accent" Content="Save"
+                            <Button Grid.Column="4" Classes="accent" Content="Save"
                                     Margin="8,0,0,0" Command="{Binding SavePathCommand}" />
                         </Grid>
                     </StackPanel>
@@ -51,8 +53,17 @@
                     <TextBlock Classes="muted" FontSize="12"
                                Text="Uses BepInEx be.752 — the same build bundled with Town of Us Mira (not bleeding-edge betas)." />
 
-                    <TextBlock Classes="muted" FontSize="12"
-                               Text="{Binding PlatformLabel, StringFormat='Running on {0}. On Linux/macOS the game launches through Steam (Proton/Wine).'}" />
+                    <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8" Padding="12"
+                            IsVisible="{Binding ShowProtonReminder}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Linux / macOS: use Steam launch options"
+                                       FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" />
+                            <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                                       Text="Mods need Among Us to launch through Steam with compatible Proton or Wine. If Reactor fails after a game update, reinstall BepInEx and check the log below." />
+                            <Button Classes="ghost" Content="Dismiss reminder" HorizontalAlignment="Left"
+                                    Command="{Binding DismissProtonReminderCommand}" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </Border>
 
@@ -171,9 +182,15 @@
                                 </StackPanel>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Classes="accent" Content="Install" />
-                                <Button Classes="success" Content="Play" />
-                                <Button Classes="danger" Content="Remove" />
+                                <Border Background="{DynamicResource AccentBrush}" Padding="12,6" CornerRadius="8">
+                                    <TextBlock Text="Install" Foreground="White" FontWeight="SemiBold" />
+                                </Border>
+                                <Border Background="{DynamicResource SuccessBrush}" Padding="12,6" CornerRadius="8">
+                                    <TextBlock Text="Play" Foreground="White" FontWeight="SemiBold" />
+                                </Border>
+                                <Border Background="{DynamicResource DangerBrush}" Padding="12,6" CornerRadius="8">
+                                    <TextBlock Text="Remove" Foreground="White" FontWeight="SemiBold" />
+                                </Border>
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -188,6 +205,10 @@
 
                     <CheckBox Content="Automatically download and install app updates"
                               IsChecked="{Binding AutoUpdateApp}"
+                              Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                    <CheckBox Content="Check for mod updates on startup (shows badges only — does not auto-install)"
+                              IsChecked="{Binding AutoUpdateMods}"
                               Foreground="{DynamicResource TextPrimaryBrush}" />
 
                     <StackPanel Orientation="Horizontal" Spacing="10">
@@ -212,6 +233,8 @@
                               Foreground="{DynamicResource TextPrimaryBrush}" />
 
                     <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button Classes="ghost" Content="Troubleshooting"
+                                Command="{Binding ShowTroubleshootingCommand}" />
                         <Button Classes="ghost" Content="Convert game to vanilla (keep downloads)"
                                 Command="{Binding ConvertToVanillaCommand}"
                                 IsEnabled="{Binding ArmDangerZone}" />

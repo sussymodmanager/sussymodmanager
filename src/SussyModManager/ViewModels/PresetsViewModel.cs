@@ -14,7 +14,8 @@ namespace SussyModManager.ViewModels
         public ObservableCollection<PresetCardViewModel> Presets { get; } = new ObservableCollection<PresetCardViewModel>();
 
         public string Title => "Presets";
-        public string Subtitle => "Curated and custom mod packs. Load or install a whole set in one click.";
+        public string Subtitle =>
+            "Install Pack downloads missing mods. Select Pack refreshes from GitHub, installs missing, and locks play to that loadout (updates on Play).";
 
         public PresetsViewModel(AppEnvironment env)
         {
@@ -32,8 +33,15 @@ namespace SussyModManager.ViewModels
             {
                 var card = new PresetCardViewModel(_env, preset);
                 card.Changed += OnPresetChanged;
+                card.RefreshInstallCount();
                 Presets.Add(card);
             }
+        }
+
+        public void RefreshInstallCounts()
+        {
+            foreach (var card in Presets)
+                card.RefreshInstallCount();
         }
 
         private void OnPresetChanged(object sender, EventArgs e) => Reload();

@@ -142,6 +142,59 @@ namespace SussyModManager.Core.Helpers
         }
 
         /// <summary>
+        /// Keeps remote mod lists but lets the shipped app win for built-in preset display fields
+        /// (name, description, pinned) so stale GitHub copies cannot show old titles like "SUS AF PACK".
+        /// </summary>
+        internal static string MergeBuiltinPresetsJson(string bundledJson, string remoteJson)
+        {
+            var bundled = Json.Deserialize<PresetFile>(bundledJson);
+            var remote = Json.Deserialize<PresetFile>(remoteJson);
+            if (remote?.presets == null || remote.presets.Count == 0)
+                return remoteJson;
+            if (bundled?.presets == null || bundled.presets.Count == 0)
+                return remoteJson;
+
+            var bundledById = bundled.presets.ToDictionary(p => p.Id, StringComparer.OrdinalIgnoreCase);
+            foreach (var preset in remote.presets)
+            {
+                if (!bundledById.TryGetValue(preset.Id, out var shipped))
+                    continue;
+
+                preset.Name = shipped.Name;
+                preset.Description = shipped.Description;
+                preset.Pinned = shipped.Pinned;
+            }
+
+            return Json.Serialize(remote);
+        }
+
+        /// <summary>Overlays shipped display fields onto presets loaded from cache or GitHub.</summary>
+        internal static void ApplyBundledPresetDisplayOverrides(List<Preset> presets)
+        {
+            if (presets == null || presets.Count == 0)
+                return;
+
+            var bundledJson = ReadBundled("builtin-presets.json");
+            if (string.IsNullOrWhiteSpace(bundledJson))
+                return;
+
+            var bundled = Json.Deserialize<PresetFile>(bundledJson)?.presets;
+            if (bundled == null || bundled.Count == 0)
+                return;
+
+            var bundledById = bundled.ToDictionary(p => p.Id, StringComparer.OrdinalIgnoreCase);
+            foreach (var preset in presets)
+            {
+                if (!bundledById.TryGetValue(preset.Id, out var shipped))
+                    continue;
+
+                preset.Name = shipped.Name;
+                preset.Description = shipped.Description;
+                preset.Pinned = shipped.Pinned;
+            }
+        }
+
+        /// <summary>
         /// Pulls the latest data files from the configured GitHub repo into the local store cache.
         /// Best-effort and time-boxed; returns true if any file actually changed.
         /// </summary>
@@ -165,14 +218,17 @@ namespace SussyModManager.Core.Helpers
 
                     using (JsonDocument.Parse(json)) { }
 
-                    if (string.Equals(name, "builtin-presets.json", StringComparison.OrdinalIgnoreCase))
-                        return;
-
                     if (string.Equals(name, "mod-cache.json", StringComparison.OrdinalIgnoreCase))
                     {
                         var bundled = ReadBundled(name);
                         if (!string.IsNullOrWhiteSpace(bundled))
                             json = MergeModCacheJson(bundled, json);
+                    }
+                    else if (string.Equals(name, "builtin-presets.json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var bundled = ReadBundled(name);
+                        if (!string.IsNullOrWhiteSpace(bundled))
+                            json = MergeBuiltinPresetsJson(bundled, json);
                     }
 
                     var dest = Path.Combine(StoreDir, name);

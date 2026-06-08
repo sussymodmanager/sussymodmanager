@@ -113,7 +113,7 @@ public class LaunchSelectionTests
     }
 
     [Fact]
-    public async Task InstallPresetAsync_DoesNotAddDependenciesToSelectedMods()
+    public async Task InstallPresetAsync_DoesNotChangeLaunchSelection()
     {
         var config = new Config();
         config.InstalledMods.Add(new InstalledMod { Id = "TownOfUs", Name = "Town of Us Mira" });
@@ -127,6 +127,26 @@ public class LaunchSelectionTests
 
         var preset = new Preset { ModIds = new List<string> { "TownOfUs" } };
         await manager.InstallPresetAsync(preset);
+
+        Assert.Empty(config.SelectedMods);
+        Assert.Null(config.ActivePackId);
+    }
+
+    [Fact]
+    public async Task SelectPresetAsync_AddsPackModsWithoutDependencyCheckboxes()
+    {
+        var config = new Config();
+        config.InstalledMods.Add(new InstalledMod { Id = "TownOfUs", Name = "Town of Us Mira" });
+        config.InstalledMods.Add(new InstalledMod { Id = "MiraAPI", Name = "Mira API" });
+        SeedLaunchableFiles(config, "TownOfUs");
+        SeedLaunchableFiles(config, "MiraAPI");
+
+        var store = new ModStore();
+        store.LoadRegistryFromJson(Registry);
+        var manager = new ModManager(config, store);
+
+        var preset = new Preset { Id = "tou-pack", ModIds = new List<string> { "TownOfUs" } };
+        await manager.SelectPresetAsync(preset);
 
         Assert.Single(config.SelectedMods);
         Assert.Equal("TownOfUs", config.SelectedMods[0]);

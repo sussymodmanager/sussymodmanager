@@ -20,8 +20,9 @@
           "exclude": []
         },
         "dll": {
-          "patterns": ["TOHE.dll", ".dll"],
-          "exclude": ["steam", "epic", "Steam", "Epic"]
+          "patterns": ["TOHE.dll"],
+          "exclude": ["steam", "epic", "Steam", "Epic"],
+          "exactMatch": true
         }
       },
       "requiresDepot": false,
@@ -63,7 +64,7 @@
           "exclude": []
         },
         "dll": {
-          "patterns": ["MiraAPI.dll"],
+          "patterns": ["TownOfUsMira.dll"],
           "exclude": [],
           "exactMatch": true
         }
@@ -166,7 +167,6 @@
       },
       "requiresDepot": false,
       "incompatibilities": [],
-      "featured": true,
       "executableName": "Better-CrewLink.exe"
     },
     {
@@ -429,8 +429,7 @@
           "optional": false
         }
       ],
-      "incompatibilities": ["TheOtherRoles", "LasMonjas", "TownOfUs", "TOHE", "AllTheRoles", "StellarRolesAU", "LaunchpadReloaded"],
-      "featured": true
+      "incompatibilities": ["TheOtherRoles", "LasMonjas", "TownOfUs", "TOHE", "AllTheRoles", "StellarRolesAU", "LaunchpadReloaded"]
     },
     {
       "id": "LasMonjas",
@@ -599,12 +598,14 @@
           "exclude": []
         },
         "dll": {
-          "patterns": [".dll"],
-          "exclude": []
+          "patterns": ["AUnlocker.dll"],
+          "exclude": [],
+          "exactMatch": true
         }
       },
       "requiresDepot": false,
-      "incompatibilities": []
+      "incompatibilities": [],
+      "featured": true
     },
     {
       "id": "EndlessHostRoles",
@@ -629,8 +630,7 @@
         }
       },
       "requiresDepot": false,
-      "incompatibilities": [],
-      "featured": true
+      "incompatibilities": []
     },
     {
       "id": "CursedAmongUs",
@@ -802,7 +802,8 @@
           "optional": false
         }
       ],
-      "incompatibilities": []
+      "incompatibilities": [],
+      "featured": true
     },
     {
       "id": "ModExplorer",
@@ -1091,6 +1092,158 @@
       "assetFilters": {
         "dll": {
           "patterns": ["DraftModeTOUM.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "TownOfUs",
+          "name": "Town of Us Mira",
+          "fileName": "TownOfUsMira.dll",
+          "githubOwner": "AU-Avengers",
+          "githubRepo": "TOU-Mira",
+          "requiredVersion": null,
+          "optional": false
+        },
+        {
+          "modId": "MiraAPI",
+          "name": "MiraAPI",
+          "fileName": "MiraAPI.dll",
+          "githubOwner": "All-Of-Us-Mods",
+          "githubRepo": "MiraAPI",
+          "requiredVersion": null,
+          "optional": false
+        }
+      ],
+      "incompatibilities": []
+    },
+    {
+      "id": "GameTweaks",
+      "name": "Game Tweaks",
+      "author": "xChipseq",
+      "description": "A Town of Us Mira addon that adds new gimmicks to your games, from gameplay changes to absolute insanity.",
+      "githubOwner": "xChipseq",
+      "githubRepo": "GameTweaks",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["GameTweaks.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "TownOfUs",
+          "name": "Town of Us Mira",
+          "fileName": "TownOfUsMira.dll",
+          "githubOwner": "AU-Avengers",
+          "githubRepo": "TOU-Mira",
+          "requiredVersion": null,
+          "optional": false
+        },
+        {
+          "modId": "MiraAPI",
+          "name": "MiraAPI",
+          "fileName": "MiraAPI.dll",
+          "githubOwner": "All-Of-Us-Mods",
+          "githubRepo": "MiraAPI",
+          "requiredVersion": null,
+          "optional": false
+        }
+      ],
+      "incompatibilities": []
+    },
+    {
+      "id": "TownOfUsMiraDivaniModsAddOn",
+      "name": "Divani Mods",
+      "author": "DivaniNL",
+      "description": "An extension mod for Town of Us Mira that adds new roles and modifiers.",
+      "githubOwner": "DivaniNL",
+      "githubRepo": "TownOfUsMiraDivaniModsAddOn",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["DivaniMods.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "TownOfUs",
+          "name": "Town of Us Mira",
+          "fileName": "TownOfUsMira.dll",
+          "githubOwner": "AU-Avengers",
+          "githubRepo": "TOU-Mira",
+          "requiredVersion": null,
+          "optional": false
+        },
+        {
+          "modId": "MiraAPI",
+          "name": "MiraAPI",
+          "fileName": "MiraAPI.dll",
+          "githubOwner": "All-Of-Us-Mods",
+          "githubRepo": "MiraAPI",
+          "requiredVersion": null,
+          "optional": false
+        }
+      ],
+      "incompatibilities": []
+    },
+    {
+      "id": "MiraNotePad",
+      "name": "Mira-NotePad",
+      "author": "Maxi0fc",
+      "description": "A client-side Town of Us Mira addon that adds an in-game notepad usable at any time.",
+      "githubOwner": "Maxi0fc",
+      "githubRepo": "Mira-NotePad",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["NotePadMod.dll"],
+          "exclude": [],
+          "exactMatch": true
+        }
+      },
+      "requiresDepot": false,
+      "dependencies": [
+        {
+          "modId": "TownOfUs",
+          "name": "Town of Us Mira",
+          "fileName": "TownOfUsMira.dll",
+          "githubOwner": "AU-Avengers",
+          "githubRepo": "TOU-Mira",
+          "requiredVersion": null,
+          "optional": false
+        },
+        {
+          "modId": "MiraAPI",
+          "name": "MiraAPI",
+          "fileName": "MiraAPI.dll",
+          "githubOwner": "All-Of-Us-Mods",
+          "githubRepo": "MiraAPI",
+          "requiredVersion": null,
+          "optional": false
+        }
+      ],
+      "incompatibilities": []
+    },
+    {
+      "id": "LocalizeUs",
+      "name": "Localize Us!",
+      "author": "AU-Avengers",
+      "description": "Adds extra languages to Among Us and Town of Us Mira, such as Polish, Swedish, and Turkish.",
+      "githubOwner": "AU-Avengers",
+      "githubRepo": "LocalizeUs",
+      "category": "Mod",
+      "assetFilters": {
+        "dll": {
+          "patterns": ["LocalizeUs.dll"],
           "exclude": [],
           "exactMatch": true
         }
