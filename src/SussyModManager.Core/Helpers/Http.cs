@@ -42,6 +42,19 @@ namespace SussyModManager.Core.Helpers
             return await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         }
 
+        /// <summary>HEAD without following redirects — returns the Location target when GitHub 302s /releases/latest.</summary>
+        public static async Task<Uri> GetRedirectLocationAsync(string url, CancellationToken ct = default)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Head, url);
+            using var resp = await Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct)
+                .ConfigureAwait(false);
+
+            if (resp.Headers.Location != null)
+                return resp.Headers.Location;
+
+            return resp.RequestMessage?.RequestUri ?? new Uri(url);
+        }
+
         public static async Task<ETagResult> GetStringWithETagAsync(string url, string etag, CancellationToken ct = default)
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, url);

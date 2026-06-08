@@ -194,6 +194,14 @@ namespace SussyModManager.ViewModels
                 if (_appUpdate?.UpdateAvailable != true)
                     return;
 
+                if (AppUpdateService.IsUpdateAlreadyStaged(_appUpdate.LatestVersion))
+                {
+                    UpdateStaged = true;
+                    UpdateAvailable = true;
+                    UpdateText = $"Update v{_appUpdate.LatestVersion} ready - restart to finish (or it installs next launch).";
+                    return;
+                }
+
                 UpdateText = $"Update available: v{_appUpdate.LatestVersion} (you have {AppVersion})";
                 UpdateAvailable = true;
 

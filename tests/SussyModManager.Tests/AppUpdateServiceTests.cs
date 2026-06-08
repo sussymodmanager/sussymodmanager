@@ -67,9 +67,32 @@ public class AppUpdateServiceTests
     [InlineData("1.2.3", "1.2.3", false)]
     [InlineData("1.2.2", "1.2.3", false)]
     [InlineData("2.0.0", "1.9.9", true)]
+    [InlineData("1.0.5", "1.0.4", true)]
     public void IsNewer_ComparesSemanticVersions(string latest, string current, bool expected)
     {
         Assert.Equal(expected, AppUpdateService.IsNewer(latest, current));
+    }
+
+    [Theory]
+    [InlineData("https://github.com/sussymodmanager/sussymodmanager/releases/tag/v1.0.5", "1.0.5")]
+    [InlineData("https://github.com/sussymodmanager/sussymodmanager/releases/tag/v1.0.4/", "1.0.4")]
+    public void ParseVersionFromReleaseTagUrl_ExtractsVersion(string url, string expected)
+    {
+        Assert.Equal(expected, AppUpdateService.ParseVersionFromReleaseTagUrl(url));
+    }
+
+    [Fact]
+    public void BuildPlatformZipUrl_MatchesReleaseAssetNaming()
+    {
+        var url = AppUpdateService.BuildPlatformZipUrl("1.0.5");
+        Assert.Contains("releases/download/v1.0.5/SussyModManager-", url);
+        Assert.EndsWith(".zip", url);
+    }
+
+    [Fact]
+    public void IsUpdateAlreadyStaged_IsFalseWithoutPendingFiles()
+    {
+        Assert.False(AppUpdateService.IsUpdateAlreadyStaged("1.0.6"));
     }
 
     private static string WrongArchTokenFor(string rid)

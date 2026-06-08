@@ -14,6 +14,10 @@ namespace SussyModManager.Core.Services
     public sealed class AppUpdateInfo
     {
         public bool UpdateAvailable { get; set; }
+
+        /// <summary>False when neither GitHub redirect nor API returned a latest version.</summary>
+        public bool CheckSucceeded { get; set; }
+
         public string CurrentVersion { get; set; }
         public string LatestVersion { get; set; }
         public string ReleaseUrl { get; set; }
@@ -42,24 +46,90 @@ namespace SussyModManager.Core.Services
             if (!AppInfo.RepoConfigured)
                 return info;
 
+            // Redirect first: does not consume api.github.com quota (mod checks share the same IP limit).
+            if (!TryApplyReleaseInfo(info, await TryFetchLatestReleaseViaRedirectAsync(ct).ConfigureAwait(false)))
+                TryApplyReleaseInfo(info, await TryFetchLatestReleaseAsync(ct).ConfigureAwait(false));
+
+            if (!info.CheckSucceeded)
+                Log.Error($"App update check could not resolve a latest version (current v{AppInfo.Version}).");
+
+            return info;
+        }
+
+        private static bool TryApplyReleaseInfo(AppUpdateInfo info, (string version, string downloadUrl) release)
+        {
+            if (info == null || string.IsNullOrWhiteSpace(release.version))
+                return false;
+
+            info.LatestVersion = release.version;
+            info.DownloadUrl = release.downloadUrl ?? AppInfo.ReleasesUrl;
+            info.UpdateAvailable = IsNewer(info.LatestVersion, AppInfo.Version);
+            info.CheckSucceeded = true;
+            return true;
+        }
+
+        private async Task<(string version, string downloadUrl)> TryFetchLatestReleaseAsync(CancellationToken ct)
+        {
             try
             {
                 var url = $"https://api.github.com/repos/{AppInfo.GitHubOwner}/{AppInfo.GitHubRepo}/releases/latest";
                 var json = await Http.GetStringAsync(url, ct).ConfigureAwait(false);
                 var release = Json.Deserialize<GitHubRelease>(json);
                 if (release == null || string.IsNullOrWhiteSpace(release.tag_name))
-                    return info;
+                    return default;
 
-                info.LatestVersion = release.tag_name.TrimStart('v', 'V');
-                info.DownloadUrl = PickAsset(release) ?? AppInfo.ReleasesUrl;
-                info.UpdateAvailable = IsNewer(info.LatestVersion, AppInfo.Version);
+                var version = release.tag_name.TrimStart('v', 'V');
+                var downloadUrl = PickAsset(release) ?? BuildPlatformZipUrl(version);
+                return (version, downloadUrl);
             }
-            catch
+            catch (Exception ex)
             {
-                // Offline / rate-limited / repo missing: silently report "no update".
+                Log.Error("GitHub API release check failed; trying releases/latest redirect fallback.", ex);
+                return default;
             }
+        }
 
-            return info;
+        private async Task<(string version, string downloadUrl)> TryFetchLatestReleaseViaRedirectAsync(CancellationToken ct)
+        {
+            try
+            {
+                var latestUrl = $"https://github.com/{AppInfo.GitHubOwner}/{AppInfo.GitHubRepo}/releases/latest";
+                var location = await Http.GetRedirectLocationAsync(latestUrl, ct).ConfigureAwait(false);
+                var version = ParseVersionFromReleaseTagUrl(location?.ToString());
+                if (string.IsNullOrWhiteSpace(version))
+                    return default;
+
+                return (version, BuildPlatformZipUrl(version));
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Release redirect fallback failed.", ex);
+                return default;
+            }
+        }
+
+        internal static string ParseVersionFromReleaseTagUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return null;
+
+            const string marker = "/releases/tag/";
+            var idx = url.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0)
+                return null;
+
+            var tag = url.Substring(idx + marker.Length).TrimEnd('/');
+            return tag.TrimStart('v', 'V');
+        }
+
+        internal static string BuildPlatformZipUrl(string version)
+        {
+            if (string.IsNullOrWhiteSpace(version))
+                return null;
+
+            var tag = version.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? version : "v" + version;
+            var rid = PlatformInfo.RuntimeIdentifier;
+            return $"https://github.com/{AppInfo.GitHubOwner}/{AppInfo.GitHubRepo}/releases/download/{tag}/SussyModManager-{rid}.zip";
         }
 
         public void OpenDownload(AppUpdateInfo info) =>
@@ -83,6 +153,42 @@ namespace SussyModManager.Core.Services
         public static bool HasPendingUpdate =>
             File.Exists(PendingMarker) && Directory.Exists(StagedDir);
 
+        public static string GetPendingUpdateVersion()
+        {
+            try
+            {
+                if (!File.Exists(PendingMarker))
+                    return null;
+                var text = File.ReadAllText(PendingMarker).Trim();
+                return string.IsNullOrWhiteSpace(text) ? null : text;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>True when this version is already downloaded and waiting for restart.</summary>
+        public static bool IsUpdateAlreadyStaged(string version) =>
+            HasPendingUpdate &&
+            !string.IsNullOrWhiteSpace(version) &&
+            string.Equals(GetPendingUpdateVersion(), version.Trim(), StringComparison.OrdinalIgnoreCase);
+
+        public static void ClearStagedUpdate()
+        {
+            try
+            {
+                if (Directory.Exists(StagedDir))
+                    Directory.Delete(StagedDir, true);
+            }
+            catch
+            {
+            }
+
+            try { File.Delete(PendingMarker); } catch { }
+            try { File.Delete(Path.Combine(UpdatesRoot, "download.zip")); } catch { }
+        }
+
         /// <summary>
         /// Downloads the platform zip and extracts it to a staging folder, then records a pending
         /// marker. The update is applied on the next launch (or immediately via ApplyAndRestart).
@@ -93,8 +199,18 @@ namespace SussyModManager.Core.Services
             if (info == null || !info.CanAutoApply)
                 return false;
 
+            if (IsUpdateAlreadyStaged(info.LatestVersion))
+                return true;
+
             try
             {
+                var pending = GetPendingUpdateVersion();
+                if (!string.IsNullOrWhiteSpace(pending) &&
+                    IsNewer(info.LatestVersion, pending))
+                {
+                    ClearStagedUpdate();
+                }
+
                 if (Directory.Exists(StagedDir))
                     Directory.Delete(StagedDir, true);
                 Directory.CreateDirectory(StagedDir);

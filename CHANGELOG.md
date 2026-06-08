@@ -1,18 +1,32 @@
 # Changelog
 
-## Unreleased
+## 1.0.6 — 2026-06-07
 
-- **Settings troubleshooting:** Reactor/interop status, repair interop, interop reference folder, open app data / BepInEx log, manual store refresh.
-- **Store filters:** Not installed / Installed / Has update.
-- **Presets:** TOHE built-in pack; SUS AF pinned with FEATURED badge; install counts (`5/7 installed`) based on files on disk.
-- **Play sync:** Pack play surfaces install/update warnings in a dialog instead of failing silently.
-- **AutoUpdateMods:** Toggle now gates startup update checks only (badges, not auto-install). Label clarifies behavior.
-- **Installed page:** Refreshes live after install, uninstall, update, or pack play without switching tabs.
-- **Proton reminder:** “Remind me later” snoozes for 7 days; “Got it” dismisses permanently.
-- **Registry:** Explicit DLL filters for AUnlocker, TownOfUsMira, and TOHE pack mods.
-- **Install vs Select Pack:** Install = refresh + missing mods only; Select = refresh + missing + pack mode. Wizard uses Select. First SUS AF **Install Pack** also selects the pack (once), so skipping the wizard still activates it for Play.
-- **AutoUpdateMods:** Defaults on unless explicitly opted out; Installed first-visit check respects the toggle.
-- **Background refresh:** Failed GitHub store refresh shows a status message instead of failing silently.
+**Use this release instead of 1.0.5.** The 1.0.5 build was stamped as v1.0.4, which caused auto-update to re-download 1.0.5 forever.
+
+### App updates
+- Update checks use GitHub’s `/releases/latest` redirect first (no API quota), with API as backup.
+- Settings shows a clear message when the update check fails instead of “you’re on the latest”.
+- Skips re-downloading when an update is already staged; clears stale staging when a newer release ships.
+
+### Presets & packs
+- **SUS AF** display name (bundled metadata wins over stale GitHub cache).
+- **Select Pack** stays on the Presets tab (no Installed-page flash).
+- First **Install Pack** on SUS AF auto-selects once (wizard-skipped users).
+- **TOHE** built-in pack; SUS AF pinned with **FEATURED** badge; install counts (`5/7 installed`).
+- **Install Pack** vs **Select Pack**: install = refresh + missing mods; select = refresh + missing + pack mode.
+
+### Mod manager
+- Store filters: Not installed / Installed / Has update.
+- Play sync surfaces install/update warnings in a dialog.
+- **AutoUpdateMods** defaults on; gates startup badge checks only (not auto-install).
+- Installed page refreshes live after install/uninstall/update/pack play.
+- Registry hardening for AUnlocker, TownOfUsMira, and TOHE.
+- Background store refresh failures show a status message.
+
+### Settings & troubleshooting
+- Troubleshooting dialog (interop repair, logs, reference path, store refresh) under Danger zone.
+- Proton reminder: snooze 7 days or dismiss permanently.
 
 ## 1.0.4 — 2026-06-05
 
@@ -30,4 +44,4 @@ Also fixes the silent startup crash on single-file Windows builds (SkiaSharp nat
 
 ## 1.0.0 — 2025
 
-First public release. Cross-platform mod manager for Among Us with the SUS AF PACK, GitHub + Thunderstore installs, color profiles, first-launch wizard, auto-updates, and danger-zone vanilla restore.
+First public release. Cross-platform mod manager for Among Us with the SUS AF pack, GitHub + Thunderstore installs, color profiles, first-launch wizard, auto-updates, and danger-zone vanilla restore.

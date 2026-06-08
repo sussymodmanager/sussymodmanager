@@ -102,6 +102,10 @@ namespace SussyModManager.ViewModels
                     else
                         _appUpdates.OpenDownload(info);
                 }
+                else if (!info.CheckSucceeded)
+                {
+                    UpdateStatus = "Couldn't check for app updates right now (GitHub unreachable or rate-limited). Try again in a few minutes.";
+                }
                 else
                 {
                     UpdateStatus = $"You're on the latest version (v{AppInfo.Version}).";
