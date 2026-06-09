@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **SUS AF pack:** Adds ChaosTokens, Divani Mods, and Game Tweaks. Existing pack users get them on Play / Install Pack / Select Pack after `data/builtin-presets.json` is pushed to GitHub.
+
 ## 1.0.6 — 2026-06-07
 
 **Use this release instead of 1.0.5.** The 1.0.5 build was stamped as v1.0.4, which caused auto-update to re-download 1.0.5 forever.

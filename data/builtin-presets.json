@@ -3,7 +3,7 @@
     {
       "id": "sus-af-pack",
       "name": "SUS AF",
-      "description": "Town of Us Mira with Roles Extension, Draft Mode, AleLuduMod, AUnlocker, Vanilla Enhancements, and Better CrewLink. Installs in dependency order.",
+      "description": "Town of Us Mira with Roles Extension, Draft Mode, AleLuduMod, ChaosTokens, Divani Mods, Game Tweaks, AUnlocker, Vanilla Enhancements, and Better CrewLink. Installs in dependency order.",
       "builtin": true,
       "pinned": true,
       "modIds": [
@@ -11,6 +11,9 @@
         "TownOfUsMiraRolesExtension",
         "DraftModeTOUM",
         "AleLuduMod",
+        "ChaosTokens",
+        "TownOfUsMiraDivaniModsAddOn",
+        "GameTweaks",
         "AUnlocker",
         "VanillaEnhancements",
         "BetterCrewLink"
@@ -20,6 +23,9 @@
         "TownOfUsMiraRolesExtension",
         "DraftModeTOUM",
         "AleLuduMod",
+        "ChaosTokens",
+        "TownOfUsMiraDivaniModsAddOn",
+        "GameTweaks",
         "AUnlocker",
         "VanillaEnhancements",
         "BetterCrewLink"

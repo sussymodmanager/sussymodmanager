@@ -38,7 +38,7 @@ You can also drop in your own plugin DLLs from **Installed → Add custom .dll**
 
 Three built-in packs ship with the app (SUS AF is pinned at the top with a **FEATURED** badge):
 
-**SUS AF** — Town of Us Mira, Roles Extension, Draft Mode, AleLuduMod, AUnlocker, Vanilla Enhancements, Better CrewLink. Installs in dependency order; one button.
+**SUS AF** — Town of Us Mira, Roles Extension, Draft Mode, AleLuduMod, ChaosTokens, Divani Mods, Game Tweaks, AUnlocker, Vanilla Enhancements, Better CrewLink. Installs in dependency order; one button.
 
 **TOHE** — Town of Host Enhanced, AUnlocker, Vanilla Enhancements, Better CrewLink.
 
