@@ -1,8 +1,9 @@
 
 # SUSSYMODMANAGER
 
-[![Downloads](https://img.shields.io/github/downloads/sussymodmanager/sussymodmanager/total?label=downloads)](https://github.com/sussymodmanager/sussymodmanager/releases)
+[![Among Us](https://badgen.net/static/AmongUs/2026.3.31/yellow)](https://store.steampowered.com/app/945360/Among_Us)
 [![Latest release](https://img.shields.io/github/v/release/sussymodmanager/sussymodmanager)](https://github.com/sussymodmanager/sussymodmanager/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/sussymodmanager/sussymodmanager/total?label=downloads)](https://github.com/sussymodmanager/sussymodmanager/releases)
 
 Feature rich desktop mod manager for Among Us on Windows, macOS, and Linux.
 
