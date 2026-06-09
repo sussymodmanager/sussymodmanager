@@ -1,17 +1,40 @@
+<div align="center">
 
 # SUSSYMODMANAGER
 
+[Install](#download) • [Documentation (WIP)] • [FAQ (WIP)] • [Screenshots (WIP)] • [Contribute (WIP)](#contribute)
+
 [![Among Us](https://badgen.net/static/AmongUs/2026.3.31/yellow)](https://store.steampowered.com/app/945360/Among_Us)
-[![Latest release](https://img.shields.io/github/v/release/sussymodmanager/sussymodmanager)](https://github.com/sussymodmanager/sussymodmanager/releases/latest)
+[![Release](https://img.shields.io/github/v/release/sussymodmanager/sussymodmanager)](https://github.com/sussymodmanager/sussymodmanager/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/sussymodmanager/sussymodmanager/total?label=downloads)](https://github.com/sussymodmanager/sussymodmanager/releases)
 
-Feature rich desktop mod manager for Among Us on Windows, macOS, and Linux.
+![SCREENSHOT](https://github.com/sussymodmanager/sussymodmanager/blob/main/assets/modstore.png)
+
+</div>
+
+---
+
+### Table of Contents (WIP)
+- [Introduction](#introduction)
+- [Download](#download)
+
+# Introduction
+
+<a href="https://github.com/sussymodmanager/sussymodmanager/blob/main/assets/sus-logo-square.jpg">
+  <img
+    src="https://raw.githubusercontent.com/sussymodmanager/sussymodmanager/blob/main/assets/sus-logo-square.jpg"
+    align="right"
+    width="128"
+  />
+</a>
+
+### Feature rich desktop mod manager for Among Us on Windows, macOS, and Linux.
 
 Select the mods you want to use, or pick a preset, and hit play. It's just that simple.
 BepInEx, Dependencies (Reactor, MiraAPI, etc) are handled for you. Steam, Epic, Xbox/MS Store install paths are automatically detected.
 Designed to make Among Us Modding as accessible as possible.
 
-![MODSTORE](https://github.com/sussymodmanager/sussymodmanager/blob/main/assets/modstore.png)
+
 
 ## Download
 
