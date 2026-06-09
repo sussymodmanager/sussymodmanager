@@ -1,6 +1,9 @@
 
 # SUSSYMODMANAGER
 
+[![Downloads](https://img.shields.io/github/downloads/sussymodmanager/sussymodmanager/total?label=downloads)](https://github.com/sussymodmanager/sussymodmanager/releases)
+[![Latest release](https://img.shields.io/github/v/release/sussymodmanager/sussymodmanager)](https://github.com/sussymodmanager/sussymodmanager/releases/latest)
+
 Feature rich desktop mod manager for Among Us on Windows, macOS, and Linux.
 
 Select the mods you want to use, or pick a preset, and hit play. It's just that simple.
