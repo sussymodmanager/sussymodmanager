@@ -211,6 +211,15 @@
                               IsChecked="{Binding AutoUpdateMods}"
                               Foreground="{DynamicResource TextPrimaryBrush}" />
 
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="GitHub token (optional)" Classes="muted" />
+                        <TextBox Text="{Binding GitHubPersonalAccessToken}"
+                                 PasswordChar="•"
+                                 Watermark="Fine-grained PAT — public repo read only" />
+                        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                                   Text="Helps avoid GitHub rate limits. Vanilla Enhancements calls GitHub when the game starts; if your IP is exhausted, that mod crashes instead of loading." />
+                    </StackPanel>
+
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <Button Classes="accent" Content="Check for updates now"
                                 Command="{Binding CheckForUpdatesCommand}" />

@@ -175,6 +175,16 @@ namespace SussyModManager.Core.Services
                 return result;
             }
 
+            if (!string.IsNullOrEmpty(_config.AmongUsPath) && LaunchSetNeedsReactor(launchSet) &&
+                !HasReactorAvailableForLaunch())
+            {
+                result.Success = false;
+                result.Message =
+                    "Reactor is required for Vanilla Enhancements (and other Reactor mods) but is not installed. " +
+                    "Reinstall the pack or install Reactor from the store, then try Play again.";
+                return result;
+            }
+
             if (!string.IsNullOrEmpty(_config.AmongUsPath) && LaunchSetNeedsReactor(launchSet))
             {
                 EnsureWorkingInterop();
@@ -192,6 +202,16 @@ namespace SussyModManager.Core.Services
                 {
                     result.Warnings.Add(logIssue);
                 }
+
+                var failedPlugins = BepInExInteropDiagnostics.GetLastLogPluginLoadFailures(_config.AmongUsPath);
+                if (failedPlugins.Count > 0)
+                {
+                    result.Warnings.Add(
+                        "On the last launch, BepInEx failed to load: " + string.Join(", ", failedPlugins) +
+                        ". The files were copied, but the plugins errored at startup — often a version mismatch " +
+                        "(e.g. Town of Us Mira needs an update). Use Play on the pack to refresh mods, or check " +
+                        "BepInEx/LogOutput.log.");
+                }
             }
 
             return result;
@@ -205,6 +225,32 @@ namespace SussyModManager.Core.Services
                 return Store.GetDependencies(id).Any(d =>
                     string.Equals(d.modId, "Reactor", StringComparison.OrdinalIgnoreCase));
             });
+
+        /// <summary>Reactor.dll in mod storage, or bundled inside the installed TOU Mira pack.</summary>
+        internal bool HasReactorAvailableForLaunch() =>
+            IsModReady("Reactor") || File.Exists(GetTownOfUsBundledReactorPath());
+
+        private string GetTownOfUsBundledReactorPath() =>
+            Path.Combine(_config.ModsFolder, "TownOfUs", "BepInEx", "plugins", "Reactor.dll");
+
+        private async Task<InstallResult> EnsureReactorForPackLaunchAsync(
+            IReadOnlyList<string> launchIds, CancellationToken ct)
+        {
+            var result = new InstallResult { Success = true };
+            if (!LaunchSetNeedsReactor(launchIds) || HasReactorAvailableForLaunch())
+                return result;
+
+            Report("Installing Reactor (required by Vanilla Enhancements and other mods)...");
+            var install = await InstallModAsync("Reactor", null, ct).ConfigureAwait(false);
+            if (install.Success || HasReactorAvailableForLaunch())
+                return result;
+
+            result.Success = false;
+            result.Message = install.Message ??
+                             "Reactor is required but could not be installed. Vanilla Enhancements will not load without it.";
+            result.Warnings.AddRange(install.Warnings);
+            return result;
+        }
 
         /// <summary>Imports a local BepInEx plugin DLL into the mod library.</summary>
         public InstallResult ImportCustomDll(string dllPath)
@@ -376,7 +422,18 @@ namespace SussyModManager.Core.Services
                 Report($"Installing dependency {depEntry.name}...");
                 var depResult = await InstallModAsync(dep.modId, null, ct).ConfigureAwait(false);
                 if (!depResult.Success)
-                    result.Warnings.Add(Store.FormatModFailure(dep.modId, depResult.Message));
+                {
+                    var failure = Store.FormatModFailure(dep.modId, depResult.Message);
+                    if (dep.optional)
+                    {
+                        result.Warnings.Add(failure);
+                        continue;
+                    }
+
+                    result.Success = false;
+                    result.Message = failure;
+                    return result;
+                }
             }
 
             var storagePath = Path.Combine(_config.ModsFolder, modId);
@@ -398,6 +455,9 @@ namespace SussyModManager.Core.Services
                 result.Message = Store.FormatModFailure(modId, "Download or extraction failed.");
                 return result;
             }
+
+            if (string.Equals(modId, VanillaEnhancementsDllPatcher.ModId, StringComparison.OrdinalIgnoreCase))
+                VanillaEnhancementsDllPatcher.PatchModFolder(storagePath);
 
             _config.InstalledMods.RemoveAll(m => string.Equals(m.Id, modId, StringComparison.OrdinalIgnoreCase));
             _config.InstalledMods.Add(new InstalledMod
@@ -495,7 +555,7 @@ namespace SussyModManager.Core.Services
                 return;
 
             RememberActivePack(preset);
-            SetLaunchSelection(preset.ModIds, syncPlugins: !string.IsNullOrEmpty(_config.AmongUsPath));
+            SetLaunchSelection(preset.GetOrderedModIds(), syncPlugins: !string.IsNullOrEmpty(_config.AmongUsPath));
         }
 
         /// <summary>Turns off pack mode; launch checkboxes stay as-is for custom play.</summary>
@@ -713,7 +773,32 @@ namespace SussyModManager.Core.Services
                 aggregate.Success = false;
             aggregate.Message = sync.Message;
 
-            SetLaunchSelection(preset.ModIds, syncPlugins: !string.IsNullOrEmpty(_config.AmongUsPath));
+            var launchIds = preset.GetOrderedModIds().ToList();
+            var reactorEnsure = await EnsureReactorForPackLaunchAsync(launchIds, ct).ConfigureAwait(false);
+            aggregate.Warnings.AddRange(reactorEnsure.Warnings);
+            if (!reactorEnsure.Success)
+            {
+                aggregate.Success = false;
+                aggregate.Message = reactorEnsure.Message ?? aggregate.Message;
+                return aggregate;
+            }
+
+            SetLaunchSelection(launchIds, syncPlugins: !string.IsNullOrEmpty(_config.AmongUsPath));
+
+            var skipped = launchIds
+                .Where(id => !_config.SelectedMods.Contains(id, StringComparer.OrdinalIgnoreCase))
+                .Select(id => Store.GetEntry(id)?.name ?? id)
+                .ToList();
+            if (skipped.Count > 0)
+            {
+                aggregate.Success = false;
+                aggregate.Warnings.Add(
+                    "Could not load for launch: " + string.Join(", ", skipped));
+                aggregate.Message = skipped.Count == 1
+                    ? $"{preset.Name}: 1 mod could not be loaded."
+                    : $"{preset.Name}: {skipped.Count} mods could not be loaded.";
+            }
+
             return aggregate;
         }
 
@@ -788,6 +873,17 @@ namespace SussyModManager.Core.Services
                 throw new InvalidOperationException("Among Us path is not set.");
 
             await EnsureBepInExAsync(ct).ConfigureAwait(false);
+
+            if (AmongUsProcessGuard.IsAmongUsRunning(_config.AmongUsPath))
+            {
+                Report("Among Us is still running — waiting for it to close...");
+                await AmongUsProcessGuard
+                    .WaitForAmongUsToExit(_config.AmongUsPath, TimeSpan.FromSeconds(18), ct)
+                    .ConfigureAwait(false);
+                if (AmongUsProcessGuard.IsAmongUsRunning(_config.AmongUsPath))
+                    throw new InvalidOperationException(AmongUsProcessGuard.FormatGameRunningMessage());
+            }
+
             CopySelectedModsIntoGame(strict);
 
             if (LaunchSetNeedsReactor(GetLaunchModIds()))
@@ -904,6 +1000,9 @@ namespace SussyModManager.Core.Services
                         Name = installed?.Name ?? modId
                     };
                 var storagePath = Path.Combine(_config.ModsFolder, modId);
+                if (string.Equals(modId, VanillaEnhancementsDllPatcher.ModId, StringComparison.OrdinalIgnoreCase))
+                    VanillaEnhancementsDllPatcher.PatchModFolder(storagePath);
+
                 try
                 {
                     Installer.PrepareModForLaunch(mod, storagePath, _config.AmongUsPath);
@@ -917,7 +1016,13 @@ namespace SussyModManager.Core.Services
             }
 
             if (strict && failures.Count > 0)
-                throw new InvalidOperationException("Could not prepare mods for launch:\n" + string.Join("\n", failures));
+            {
+                var detail = string.Join("\n", failures);
+                var message = "Could not prepare mods for launch:\n" + detail;
+                if (failures.TrueForAll(AmongUsProcessGuard.LooksLikeFileLockFailure))
+                    message = AmongUsProcessGuard.FormatGameRunningMessage() + "\n\n" + message;
+                throw new InvalidOperationException(message);
+            }
         }
 
         /// <summary>
@@ -982,6 +1087,14 @@ namespace SussyModManager.Core.Services
             InstallResult packSync = null;
             if (!skipPackPrepare)
                 packSync = await PreparePackForPlayAsync(ct).ConfigureAwait(false);
+
+            if (packSync != null && !packSync.Success)
+            {
+                var msg = packSync.Message ?? "Some pack mods could not be installed or loaded.";
+                if (packSync.Warnings.Count > 0)
+                    msg += "\n\n" + string.Join("\n", packSync.Warnings);
+                throw new InvalidOperationException(msg);
+            }
 
             var validation = ValidateBeforeLaunch();
             if (!validation.Success)
@@ -1170,6 +1283,29 @@ namespace SussyModManager.Core.Services
             if (entry == null)
                 return false;
 
+            var current = installed.ReleaseTag ?? installed.Version;
+            if (string.IsNullOrEmpty(current))
+                return false;
+
+            try
+            {
+                var redirectTag = await GitHubReleaseRedirect.TryGetLatestTagAsync(
+                    entry.githubOwner, entry.githubRepo, ct).ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(redirectTag))
+                {
+                    if (ReleaseTagsEquivalent(redirectTag, current))
+                        return false;
+                    if (AppUpdateService.IsNewer(redirectTag, current))
+                        return true;
+                }
+            }
+            catch
+            {
+            }
+
+            if (Store.RateLimited)
+                return false;
+
             var mod = Store.CreateBaseMod(entry);
             try
             {
@@ -1185,10 +1321,17 @@ namespace SussyModManager.Core.Services
             if (latest == null)
                 return false;
 
-            var current = installed.ReleaseTag ?? installed.Version;
             var latestTag = latest.ReleaseTag ?? latest.Version;
-            return !string.IsNullOrEmpty(latestTag) &&
-                   !string.Equals(current, latestTag, StringComparison.OrdinalIgnoreCase);
+            return !string.IsNullOrEmpty(latestTag) && !ReleaseTagsEquivalent(latestTag, current);
+        }
+
+        private static bool ReleaseTagsEquivalent(string a, string b)
+        {
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b))
+                return false;
+            if (string.Equals(a, b, StringComparison.OrdinalIgnoreCase))
+                return true;
+            return !AppUpdateService.IsNewer(a, b) && !AppUpdateService.IsNewer(b, a);
         }
 
         private static bool VersionsMatch(InstalledMod installed, ModVersion latest)

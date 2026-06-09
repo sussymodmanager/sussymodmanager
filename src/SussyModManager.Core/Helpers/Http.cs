@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using SussyModManager.Core;
@@ -21,6 +22,7 @@ namespace SussyModManager.Core.Helpers
     public static class Http
     {
         private static readonly HttpClient Client = CreateClient();
+        private static readonly HttpClient RedirectClient = CreateRedirectClient();
 
         private static HttpClient CreateClient()
         {
@@ -32,6 +34,41 @@ namespace SussyModManager.Core.Helpers
             // A realistic UA keeps CDNs (Thunderstore/Cloudflare) happy; GitHub only needs any UA.
             client.DefaultRequestHeaders.UserAgent.ParseAdd($"Mozilla/5.0 (compatible; SussyModManager/{AppInfo.Version})");
             client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+            ApplyGitHubTokenFromEnvironment(client);
+            return client;
+        }
+
+        /// <summary>Uses a PAT for api.github.com so unauthenticated IP quota stays free for in-game mods.</summary>
+        public static void SetGitHubPersonalAccessToken(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                Client.DefaultRequestHeaders.Authorization = null;
+                ApplyGitHubTokenFromEnvironment(Client);
+                return;
+            }
+
+            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Trim());
+        }
+
+        private static void ApplyGitHubTokenFromEnvironment(HttpClient client)
+        {
+            var env = Environment.GetEnvironmentVariable("GITHUB_TOKEN");
+            if (string.IsNullOrWhiteSpace(env))
+                env = Environment.GetEnvironmentVariable("GH_TOKEN");
+            if (!string.IsNullOrWhiteSpace(env))
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", env.Trim());
+        }
+
+        private static HttpClient CreateRedirectClient()
+        {
+            var client = new HttpClient(new HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+            });
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd($"Mozilla/5.0 (compatible; SussyModManager/{AppInfo.Version})");
             return client;
         }
 
@@ -46,13 +83,35 @@ namespace SussyModManager.Core.Helpers
         public static async Task<Uri> GetRedirectLocationAsync(string url, CancellationToken ct = default)
         {
             using var request = new HttpRequestMessage(HttpMethod.Head, url);
-            using var resp = await Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct)
+            using var resp = await RedirectClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct)
                 .ConfigureAwait(false);
 
             if (resp.Headers.Location != null)
-                return resp.Headers.Location;
+            {
+                var location = resp.Headers.Location;
+                return location.IsAbsoluteUri ? location : new Uri(new Uri(url), location);
+            }
+
+            if ((int)resp.StatusCode >= 300 && (int)resp.StatusCode < 400)
+                return new Uri(url);
 
             return resp.RequestMessage?.RequestUri ?? new Uri(url);
+        }
+
+        /// <summary>HEAD request — true when the URL responds with a success status (no API quota).</summary>
+        public static async Task<bool> UrlExistsAsync(string url, CancellationToken ct = default)
+        {
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Head, url);
+                using var resp = await Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct)
+                    .ConfigureAwait(false);
+                return resp.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public static async Task<ETagResult> GetStringWithETagAsync(string url, string etag, CancellationToken ct = default)

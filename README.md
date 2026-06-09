@@ -135,4 +135,4 @@ Official release zips are plain self-contained folders (not single-file) to avoi
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). Current release: **1.0.6** (skip 1.0.5 — bad version stamp).
+See [CHANGELOG.md](CHANGELOG.md). Current release: **1.0.8** (skip 1.0.5 — bad version stamp).

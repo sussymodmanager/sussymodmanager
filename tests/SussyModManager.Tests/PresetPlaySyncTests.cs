@@ -29,8 +29,8 @@ public class PresetPlaySyncTests
                 {
                   "presets": [
                     {
-                      "id": "sus-af-pack",
-                      "name": "SUS AF",
+                      "id": "test-fresh-pack",
+                      "name": "Fresh test pack",
                       "description": "test",
                       "modIds": ["TownOfUs", "PackModA", "PackModB"],
                       "installOrder": ["TownOfUs", "PackModA", "PackModB"]
@@ -43,8 +43,8 @@ public class PresetPlaySyncTests
             var service = new PresetService();
             var stale = new Preset
             {
-                Id = "sus-af-pack",
-                Name = "SUS AF",
+                Id = "test-fresh-pack",
+                Name = "Fresh test pack",
                 Builtin = true,
                 ModIds = new List<string> { "TownOfUs" }
             };
@@ -214,7 +214,7 @@ public class PresetPlaySyncTests
     }
 
     [Fact]
-    public void FindInstalledPackMatch_PrefersSusAfPack()
+    public void FindInstalledPackMatch_ReturnsExactBuiltinMatch()
     {
         var service = new PresetService();
         var config = new Config
@@ -239,8 +239,8 @@ public class PresetPlaySyncTests
                     {
                       "id": "sus-af-pack",
                       "name": "SUS AF",
-                      "modIds": ["TownOfUs", "BetterCrewLink"],
-                      "installOrder": ["TownOfUs", "BetterCrewLink"]
+                      "modIds": ["TownOfUs", "BetterCrewLink", "ChaosTokens"],
+                      "installOrder": ["TownOfUs", "BetterCrewLink", "ChaosTokens"]
                     },
                     {
                       "id": "other-pack",
@@ -255,7 +255,7 @@ public class PresetPlaySyncTests
             var match = service.FindInstalledPackMatch(config);
 
             Assert.NotNull(match);
-            Assert.Equal("sus-af-pack", match.Id);
+            Assert.Equal("other-pack", match.Id);
         }
         finally
         {

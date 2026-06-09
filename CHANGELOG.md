@@ -1,8 +1,17 @@
 # Changelog
 
-## Unreleased
+## 1.0.8 — 2026-06-08
 
-- **SUS AF pack:** Adds ChaosTokens, Divani Mods, and Game Tweaks. Existing pack users get them on Play / Install Pack / Select Pack after `data/builtin-presets.json` is pushed to GitHub.
+### Mod versions & store
+- **Full mod audit:** all GitHub registry mods checked against live `/releases/latest`; bundled `mod-cache.json` rebuilt; redirect runs before stale cache; generalized `GitHubReleaseAssetGuesser` + atom fallback for prerelease-only repos (e.g. LevelImposter).
+- **Registry fixes:** asset filters corrected for StellarRolesAU, EndlessHostRoles, LotusContinued, TOHO, BetterCrewLink, Impostor, SyzyfowyTownOfUs, PokeLobby, EmojisInTheChat, and others.
+- **Town of Us Mira v1.4.0 pin fixed:** bundled cache shipped an old TOU release that re-seeded AppData on every launch; updated to **1.6.2** with correct `1.6.2` / `TouMira-v1.6.2` URL handling.
+- **Removed LocalizeUs** from the registry (no GitHub releases published).
+
+### Packs & launch
+- **SUS AF pack:** GitHub wins for preset mod lists; Play installs the full pack and blocks partial launches when prep fails.
+- **Vanilla Enhancements:** DLL deploys correctly; blocks launch with a clear message when GitHub rate-limits the mod’s startup API check (optional GitHub PAT in Settings reduces manager API use on your IP).
+- **Launch:** Waits for Among Us to exit before copying plugins; retries on brief file locks with a clear “close the game first” message.
 
 ## 1.0.6 — 2026-06-07
 

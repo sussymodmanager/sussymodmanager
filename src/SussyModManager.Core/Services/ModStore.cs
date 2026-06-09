@@ -122,7 +122,15 @@ namespace SussyModManager.Core.Services
                 return;
 
             foreach (var kvp in cache.mods)
-                _cache[kvp.Key] = kvp.Value;
+            {
+                if (!_cache.TryGetValue(kvp.Key, out var existing))
+                {
+                    _cache[kvp.Key] = kvp.Value;
+                    continue;
+                }
+
+                _cache[kvp.Key] = DataStore.PreferNewerModCacheEntry(existing, kvp.Value);
+            }
         }
 
         public IReadOnlyList<ModRegistryEntry> Entries => _entries;

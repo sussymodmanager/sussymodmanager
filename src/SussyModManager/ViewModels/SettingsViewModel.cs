@@ -37,6 +37,7 @@ namespace SussyModManager.ViewModels
         [ObservableProperty] private bool _showProtonReminder;
         [ObservableProperty] private string _storeRefreshStatus;
         [ObservableProperty] private string _interopReferencePath;
+        [ObservableProperty] private string _gitHubPersonalAccessToken;
 
         private readonly AppUpdateService _appUpdates = new AppUpdateService();
 
@@ -55,6 +56,7 @@ namespace SussyModManager.ViewModels
             ShowBetaVersions = env.Config.ShowBetaVersions;
             AutoUpdateApp = env.Config.AutoUpdateApp;
             AutoUpdateMods = env.Config.AutoUpdateMods;
+            GitHubPersonalAccessToken = env.Config.GitHubPersonalAccessToken;
             AppVersionLabel = $"SUSSYMODMANAGER v{AppInfo.Version}";
             UpdateStatus = AppInfo.RepoConfigured ? "" : "Set your GitHub repo in AppInfo.cs to enable updates.";
             PlatformLabel = $"{PlatformInfo.Os} ({PlatformInfo.ProcessArchitecture})";
@@ -74,6 +76,13 @@ namespace SussyModManager.ViewModels
         {
             _env.Config.AutoUpdateMods = value;
             _env.Config.AutoUpdateModsOptOut = !value;
+            _env.Save();
+        }
+
+        partial void OnGitHubPersonalAccessTokenChanged(string value)
+        {
+            _env.Config.GitHubPersonalAccessToken = value;
+            Http.SetGitHubPersonalAccessToken(value);
             _env.Save();
         }
 

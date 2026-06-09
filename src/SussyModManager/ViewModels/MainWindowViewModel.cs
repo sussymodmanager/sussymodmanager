@@ -73,7 +73,7 @@ namespace SussyModManager.ViewModels
             {
                 Installed.RefreshPackMode();
                 Installed.RefreshCardStates();
-                Presets.RefreshInstallCounts();
+                Presets.Reload();
                 SetStatus(_env.GetIdleStatus());
             };
             _env.ModLibraryChanged += (_, _) => RefreshModLibraryUi();

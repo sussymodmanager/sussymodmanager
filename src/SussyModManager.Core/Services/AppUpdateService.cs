@@ -406,9 +406,12 @@ namespace SussyModManager.Core.Services
         private static string Sanitize(string v)
         {
             if (string.IsNullOrWhiteSpace(v)) return "0.0";
+            var s = v.Trim();
+            if (s.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+                s = s.Substring(1);
             // Drop pre-release/build suffixes like "1.2.0-beta+abc".
-            var cut = v.IndexOfAny(new[] { '-', '+', ' ' });
-            return cut > 0 ? v.Substring(0, cut) : v;
+            var cut = s.IndexOfAny(new[] { '-', '+', ' ' });
+            return cut > 0 ? s.Substring(0, cut) : s;
         }
     }
 }

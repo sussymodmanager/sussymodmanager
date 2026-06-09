@@ -50,6 +50,12 @@ namespace SussyModManager.Core.Services
                 }
             }
 
+            if (filter.patterns.Exists(p => p == ".dll") &&
+                !string.IsNullOrEmpty(entry.githubRepo))
+            {
+                return entry.githubRepo + ".dll";
+            }
+
             return null;
         }
     }

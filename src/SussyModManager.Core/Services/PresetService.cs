@@ -16,11 +16,17 @@ namespace SussyModManager.Core.Services
     {
         public List<Preset> LoadBuiltinPresets()
         {
-            // Cached remote copy first (updated on launch from GitHub), then bundled next to the exe.
-            var json = DataStore.Read("builtin-presets.json");
-            var file = Json.Deserialize<PresetFile>(json);
-            var presets = file?.presets ?? new List<Preset>();
-            DataStore.ApplyBundledPresetDisplayOverrides(presets);
+            // Merge AppData cache (prior GitHub refresh) with bundled; GitHub/cached mod lists win.
+            var cachedJson = DataStore.ReadCached("builtin-presets.json");
+            var cached = string.IsNullOrWhiteSpace(cachedJson)
+                ? null
+                : Json.Deserialize<PresetFile>(cachedJson)?.presets;
+            var bundledJson = DataStore.ReadBundled("builtin-presets.json");
+            var bundled = string.IsNullOrWhiteSpace(bundledJson)
+                ? null
+                : Json.Deserialize<PresetFile>(bundledJson)?.presets;
+
+            var presets = DataStore.MergeBuiltinPresetLists(cached, bundled);
             foreach (var preset in presets)
                 preset.Builtin = true;
             return presets;

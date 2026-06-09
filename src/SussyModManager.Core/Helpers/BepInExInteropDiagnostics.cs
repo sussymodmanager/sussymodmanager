@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -13,6 +15,37 @@ namespace SussyModManager.Core.Helpers
         private static readonly Regex ReactorLoadError = new Regex(
             @"Error loading \[Reactor[^\]]*\]:.*TypeLoadException",
             RegexOptions.Compiled | RegexOptions.Singleline);
+
+        private static readonly Regex PluginLoadError = new Regex(
+            @"\[Error\s*:\s*BepInEx\] Error loading \[([^\]]+)\]",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        /// <summary>
+        /// Plugin display names from the last launch that BepInEx failed to load (DLL was present).
+        /// </summary>
+        public static List<string> GetLastLogPluginLoadFailures(string amongUsPath)
+        {
+            if (string.IsNullOrEmpty(amongUsPath))
+                return new List<string>();
+
+            var log = Path.Combine(amongUsPath, "BepInEx", "LogOutput.log");
+            if (!File.Exists(log))
+                return new List<string>();
+
+            try
+            {
+                var text = File.ReadAllText(log);
+                return PluginLoadError.Matches(text)
+                    .Cast<Match>()
+                    .Select(m => m.Groups[1].Value.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+            catch
+            {
+                return new List<string>();
+            }
+        }
 
         /// <summary>
         /// Returns a user-facing message when the last BepInEx log shows Reactor failed to load.

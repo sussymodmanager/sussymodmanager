@@ -22,6 +22,9 @@ namespace SussyModManager.Core.Models
         /// <summary>After the first successful SUS AF Install Pack auto-select, do not auto-select again.</summary>
         public bool SusAfInstallPackAutoSelectDone { get; set; }
 
+        /// <summary>Optional GitHub PAT — manager API calls use authenticated quota so in-game mods (e.g. Vanilla Enhancements) are less likely to hit IP rate limits.</summary>
+        public string GitHubPersonalAccessToken { get; set; }
+
         public bool AutoUpdateMods { get; set; } = true;
 
         /// <summary>True only when the user explicitly disabled startup mod update checks.</summary>
@@ -94,6 +97,7 @@ namespace SussyModManager.Core.Models
                             config.ActiveColorProfileId = "sus-default";
                         // On by default. Older configs saved false before opt-out tracking — ignore that.
                         config.AutoUpdateMods = !config.AutoUpdateModsOptOut;
+                        Http.SetGitHubPersonalAccessToken(config.GitHubPersonalAccessToken);
                         return config;
                     }
                 }
@@ -111,6 +115,7 @@ namespace SussyModManager.Core.Models
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(ConfigPath));
+                Http.SetGitHubPersonalAccessToken(GitHubPersonalAccessToken);
                 var json = Json.Serialize(this);
                 var tempPath = ConfigPath + ".tmp";
                 File.WriteAllText(tempPath, json);

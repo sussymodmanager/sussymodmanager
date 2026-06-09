@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using SussyModManager.Core.Helpers;
 using SussyModManager.Core.Models;
 
 namespace SussyModManager.Core.Services
@@ -77,8 +79,15 @@ namespace SussyModManager.Core.Services
             var copied = 0;
             foreach (var dll in Directory.GetFiles(modStoragePath, "*.dll", SearchOption.TopDirectoryOnly))
             {
+                if (VanillaEnhancementsDllPatcher.IsVanillaEnhancementsDll(dll))
+                    VanillaEnhancementsDllPatcher.PatchFileIfNeeded(dll);
+
                 var dest = Path.Combine(pluginsPath, Path.GetFileName(dll));
                 SafeCopyFile(dll, dest, throwOnError: true);
+
+                if (VanillaEnhancementsDllPatcher.IsVanillaEnhancementsDll(dest))
+                    VanillaEnhancementsDllPatcher.PatchFileIfNeeded(dest);
+
                 copied++;
             }
 
@@ -203,26 +212,46 @@ namespace SussyModManager.Core.Services
             return Path.GetFileName(fullPath);
         }
 
+        private const int CopyRetryAttempts = 5;
+        private const int CopyRetryDelayMs = 400;
+
         private static void SafeCopyFile(string source, string dest, bool throwOnError = false)
         {
-            try
+            Exception lastError = null;
+            for (var attempt = 1; attempt <= CopyRetryAttempts; attempt++)
             {
-                var dir = Path.GetDirectoryName(dest);
-                if (!string.IsNullOrEmpty(dir))
-                    Directory.CreateDirectory(dir);
-
-                if (File.Exists(dest))
+                try
                 {
-                    File.SetAttributes(dest, FileAttributes.Normal);
-                    File.Delete(dest);
+                    var dir = Path.GetDirectoryName(dest);
+                    if (!string.IsNullOrEmpty(dir))
+                        Directory.CreateDirectory(dir);
+
+                    if (File.Exists(dest))
+                    {
+                        File.SetAttributes(dest, FileAttributes.Normal);
+                        File.Delete(dest);
+                    }
+
+                    File.Copy(source, dest, true);
+                    return;
                 }
-                File.Copy(source, dest, true);
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    if (attempt < CopyRetryAttempts && AmongUsProcessGuard.IsFileLockError(ex))
+                    {
+                        Thread.Sleep(CopyRetryDelayMs);
+                        continue;
+                    }
+
+                    if (throwOnError)
+                        throw new IOException($"Failed to copy {Path.GetFileName(source)}: {ex.Message}", ex);
+                    return;
+                }
             }
-            catch (Exception ex)
-            {
-                if (throwOnError)
-                    throw new IOException($"Failed to copy {Path.GetFileName(source)}: {ex.Message}", ex);
-            }
+
+            if (throwOnError && lastError != null)
+                throw new IOException($"Failed to copy {Path.GetFileName(source)}: {lastError.Message}", lastError);
         }
 
         private static void TryDeleteFile(string path)

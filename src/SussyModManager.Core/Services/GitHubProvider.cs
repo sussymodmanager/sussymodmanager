@@ -22,7 +22,12 @@ namespace SussyModManager.Core.Services
 
         public async Task FetchLatestAsync(Mod mod, ModRegistryEntry entry, ModCacheEntry bundledCache, CancellationToken ct = default)
         {
-            UseBundledFallback(mod, entry, bundledCache);
+            // Live /releases/latest redirect first — bundled mod-cache must never win over GitHub.
+            if (await TryPopulateFromRedirectAsync(mod, entry, ct).ConfigureAwait(false))
+            {
+                TryDirectDownloadFallback(mod, entry);
+                return;
+            }
 
             var apiUrl = $"https://api.github.com/repos/{mod.GitHubOwner}/{mod.GitHubRepo}/releases/latest";
             var cacheKey = $"mod_{mod.Id}_latest";
@@ -61,14 +66,56 @@ namespace SussyModManager.Core.Services
             catch (HttpRequestException ex) when (IsRateLimit(ex))
             {
                 RateLimited = true;
-                UseBundledFallback(mod, entry, bundledCache);
             }
             catch
             {
-                UseBundledFallback(mod, entry, bundledCache);
             }
 
+            if (mod.Versions.Count == 0)
+                UseBundledFallback(mod, entry, bundledCache);
+
             TryDirectDownloadFallback(mod, entry);
+            await TryPopulateFromRedirectAsync(mod, entry, ct).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// GitHub's /releases/latest redirect is authoritative and does not use API quota.
+        /// </summary>
+        private static async Task<bool> TryPopulateFromRedirectAsync(
+            Mod mod, ModRegistryEntry entry, CancellationToken ct)
+        {
+            var redirectTag = await GitHubReleaseRedirect.TryGetLatestTagAsync(
+                entry.githubOwner, entry.githubRepo, ct).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(redirectTag))
+                return false;
+
+            var currentTag = mod.Versions.FirstOrDefault()?.ReleaseTag;
+            if (!string.IsNullOrEmpty(currentTag) &&
+                !AppUpdateService.IsNewer(redirectTag, currentTag))
+                return mod.Versions.Count > 0;
+
+            var release = await GitHubReleaseRedirect.TryBuildReleaseFromTagAsync(entry, redirectTag, ct)
+                .ConfigureAwait(false);
+            if (release == null)
+                return false;
+
+            var fresh = new Mod();
+            AssetSelector.AddVersionsFromRegistry(fresh, release, entry, release.prerelease);
+            if (fresh.Versions.Count == 0)
+                return false;
+
+            mod.Versions.Clear();
+            mod.Versions.AddRange(fresh.Versions);
+            return true;
+        }
+
+        private static string ParseCachedTag(string cachedReleaseData)
+        {
+            if (string.IsNullOrEmpty(cachedReleaseData))
+                return null;
+
+            var release = Json.Deserialize<GitHubRelease>(cachedReleaseData);
+            return release?.tag_name;
         }
 
         private static void TryDirectDownloadFallback(Mod mod, ModRegistryEntry entry)

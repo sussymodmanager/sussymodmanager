@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SussyModManager.Core.Models;
 using SussyModManager.Core.Platform;
+using SussyModManager.Core.Services;
 
 namespace SussyModManager.Core.Helpers
 {
@@ -95,6 +96,7 @@ namespace SussyModManager.Core.Helpers
             try
             {
                 MergeModCacheStore();
+                MergeBuiltinPresetsStore();
             }
             catch
             {
@@ -128,7 +130,15 @@ namespace SussyModManager.Core.Helpers
                 if (cache?.mods == null)
                     return;
                 foreach (var kvp in cache.mods)
-                    merged[kvp.Key] = kvp.Value;
+                {
+                    if (!merged.TryGetValue(kvp.Key, out var existing))
+                    {
+                        merged[kvp.Key] = kvp.Value;
+                        continue;
+                    }
+
+                    merged[kvp.Key] = PreferNewerModCacheEntry(existing, kvp.Value);
+                }
             }
 
             Add(bundledJson);
@@ -141,35 +151,176 @@ namespace SussyModManager.Core.Helpers
             return Json.Serialize(new ModCache { mods = merged });
         }
 
+        internal static ModCacheEntry PreferNewerModCacheEntry(ModCacheEntry a, ModCacheEntry b)
+        {
+            var tagA = ParseModCacheReleaseTag(a);
+            var tagB = ParseModCacheReleaseTag(b);
+            if (string.IsNullOrEmpty(tagA))
+                return b;
+            if (string.IsNullOrEmpty(tagB))
+                return a;
+            return AppUpdateService.IsNewer(tagB, tagA) ? b : a;
+        }
+
+        private static string ParseModCacheReleaseTag(ModCacheEntry entry)
+        {
+            if (entry == null || string.IsNullOrWhiteSpace(entry.cachedReleaseData))
+                return null;
+
+            var release = Json.Deserialize<GitHubRelease>(entry.cachedReleaseData);
+            return release?.tag_name;
+        }
+
+        private static void MergeBuiltinPresetsStore()
+        {
+            var bundledJson = ReadBundled("builtin-presets.json");
+            if (string.IsNullOrWhiteSpace(bundledJson))
+                return;
+
+            var bundled = Json.Deserialize<PresetFile>(bundledJson)?.presets;
+            if (bundled == null || bundled.Count == 0)
+                return;
+
+            var cachedJson = ReadCached("builtin-presets.json");
+            var cached = string.IsNullOrWhiteSpace(cachedJson)
+                ? null
+                : Json.Deserialize<PresetFile>(cachedJson)?.presets;
+
+            var merged = MergeBuiltinPresetLists(cached, bundled);
+            var mergedJson = Json.Serialize(new PresetFile { presets = merged });
+            if (string.Equals(cachedJson, mergedJson, StringComparison.Ordinal))
+                return;
+
+            File.WriteAllText(Path.Combine(StoreDir, "builtin-presets.json"), mergedJson);
+        }
+
         /// <summary>
-        /// Keeps remote mod lists but lets the shipped app win for built-in preset display fields
-        /// (name, description, pinned) so stale GitHub copies cannot show old titles like "SUS AF PACK".
+        /// Merges GitHub/cached built-in presets with the shipped copy. Mod lists come from
+        /// GitHub/remote; bundled only overlays display fields (name, description, pinned).
         /// </summary>
         internal static string MergeBuiltinPresetsJson(string bundledJson, string remoteJson)
         {
-            var bundled = Json.Deserialize<PresetFile>(bundledJson);
-            var remote = Json.Deserialize<PresetFile>(remoteJson);
-            if (remote?.presets == null || remote.presets.Count == 0)
+            var bundled = Json.Deserialize<PresetFile>(bundledJson)?.presets;
+            var remote = Json.Deserialize<PresetFile>(remoteJson)?.presets;
+            if (remote == null || remote.Count == 0)
                 return remoteJson;
-            if (bundled?.presets == null || bundled.presets.Count == 0)
+            if (bundled == null || bundled.Count == 0)
                 return remoteJson;
 
-            var bundledById = bundled.presets.ToDictionary(p => p.Id, StringComparer.OrdinalIgnoreCase);
-            foreach (var preset in remote.presets)
+            var merged = MergeBuiltinPresetLists(remote, bundled);
+            return Json.Serialize(new PresetFile { presets = merged });
+        }
+
+        /// <summary>
+        /// Combines cached/GitHub and bundled built-in presets into one canonical list.
+        /// Precedence for mod lists: GitHub/remote (first argument) &gt; bundled fallback only when
+        /// the authoritative source has no entry yet.
+        /// </summary>
+        internal static List<Preset> MergeBuiltinPresetLists(List<Preset> authoritative, List<Preset> bundled)
+        {
+            var byId = new Dictionary<string, Preset>(StringComparer.OrdinalIgnoreCase);
+
+            if (authoritative != null)
             {
-                if (!bundledById.TryGetValue(preset.Id, out var shipped))
-                    continue;
-
-                preset.Name = shipped.Name;
-                preset.Description = shipped.Description;
-                preset.Pinned = shipped.Pinned;
+                foreach (var preset in authoritative)
+                {
+                    if (string.IsNullOrWhiteSpace(preset?.Id))
+                        continue;
+                    byId[preset.Id] = ClonePreset(preset);
+                }
             }
 
-            return Json.Serialize(remote);
+            if (bundled != null)
+            {
+                foreach (var shipped in bundled)
+                {
+                    if (string.IsNullOrWhiteSpace(shipped?.Id))
+                        continue;
+
+                    if (!byId.TryGetValue(shipped.Id, out var existing))
+                    {
+                        byId[shipped.Id] = ClonePreset(shipped);
+                        continue;
+                    }
+
+                    ApplyBuiltinPresetMerge(existing, shipped);
+                }
+            }
+
+            foreach (var preset in byId.Values)
+                SyncInstallOrderWithModIds(preset);
+
+            return byId.Values.ToList();
+        }
+
+        /// <summary>
+        /// Overlays shipped display fields onto the authoritative preset. Mod lists stay on
+        /// <paramref name="target"/> (GitHub/cached); bundled is not authoritative for modIds.
+        /// </summary>
+        private static void ApplyBuiltinPresetMerge(Preset target, Preset shipped)
+        {
+            target.Name = shipped.Name;
+            target.Description = shipped.Description;
+            target.Pinned = shipped.Pinned;
+        }
+
+        /// <summary>Ensures install order covers every mod id (preserves known order first).</summary>
+        internal static void SyncInstallOrderWithModIds(Preset preset)
+        {
+            var modIds = preset?.ModIds ?? new List<string>();
+            if (modIds.Count == 0)
+            {
+                preset.InstallOrder = null;
+                return;
+            }
+
+            var order = preset.InstallOrder;
+            if (order == null || order.Count == 0)
+            {
+                preset.InstallOrder = new List<string>(modIds);
+                return;
+            }
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var synced = new List<string>();
+            foreach (var id in order)
+            {
+                if (string.IsNullOrWhiteSpace(id) ||
+                    !modIds.Contains(id, StringComparer.OrdinalIgnoreCase) ||
+                    !seen.Add(id))
+                    continue;
+                synced.Add(id);
+            }
+
+            foreach (var id in modIds)
+            {
+                if (seen.Add(id))
+                    synced.Add(id);
+            }
+
+            preset.InstallOrder = synced;
+        }
+
+        private static Preset ClonePreset(Preset source)
+        {
+            return new Preset
+            {
+                Id = source.Id,
+                Name = source.Name,
+                Description = source.Description,
+                Builtin = true,
+                Pinned = source.Pinned,
+                ModIds = source.ModIds != null ? new List<string>(source.ModIds) : new List<string>(),
+                InstallOrder = source.InstallOrder != null ? new List<string>(source.InstallOrder) : null
+            };
         }
 
         /// <summary>Overlays shipped display fields onto presets loaded from cache or GitHub.</summary>
-        internal static void ApplyBundledPresetDisplayOverrides(List<Preset> presets)
+        internal static void ApplyBundledPresetDisplayOverrides(List<Preset> presets) =>
+            ApplyBundledPresetListMerge(presets);
+
+        /// <summary>Merges bundled built-in preset definitions into an already-loaded list.</summary>
+        internal static void ApplyBundledPresetListMerge(List<Preset> presets)
         {
             if (presets == null || presets.Count == 0)
                 return;
@@ -182,16 +333,9 @@ namespace SussyModManager.Core.Helpers
             if (bundled == null || bundled.Count == 0)
                 return;
 
-            var bundledById = bundled.ToDictionary(p => p.Id, StringComparer.OrdinalIgnoreCase);
-            foreach (var preset in presets)
-            {
-                if (!bundledById.TryGetValue(preset.Id, out var shipped))
-                    continue;
-
-                preset.Name = shipped.Name;
-                preset.Description = shipped.Description;
-                preset.Pinned = shipped.Pinned;
-            }
+            var merged = MergeBuiltinPresetLists(presets, bundled);
+            presets.Clear();
+            presets.AddRange(merged);
         }
 
         /// <summary>

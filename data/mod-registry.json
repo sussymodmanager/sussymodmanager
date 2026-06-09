@@ -39,8 +39,9 @@
       "category": "Host Mod",
       "assetFilters": {
         "dll": {
-          "patterns": [".dll"],
-          "exclude": []
+          "patterns": ["TOHO.dll"],
+          "exclude": [],
+          "exactMatch": true
         }
       },
       "requiresDepot": false,
@@ -142,8 +143,8 @@
       "category": "Utility",
       "assetFilters": {
         "default": {
-          "patterns": [".zip"],
-          "exclude": ["source"]
+          "patterns": ["Better-CrewLink-Unpacked-x64"],
+          "exclude": ["source", "AppImage", "blockmap", "yml", "exe"]
         }
       },
       "requiresDepot": false,
@@ -161,8 +162,8 @@
       "category": "Utility",
       "assetFilters": {
         "default": {
-          "patterns": [".zip"],
-          "exclude": ["source"]
+          "patterns": ["Better-CrewLink-Unpacked-x64"],
+          "exclude": ["source", "AppImage", "blockmap", "yml", "exe"]
         }
       },
       "requiresDepot": false,
@@ -370,9 +371,18 @@
       "githubRepo": "StellarRolesAU",
       "category": "Mod",
       "assetFilters": {
-        "default": {
-          "patterns": [".zip"],
-          "exclude": ["source"]
+        "steam": {
+          "patterns": ["StellarRoles.Steam"],
+          "exclude": ["Epic"]
+        },
+        "epic": {
+          "patterns": ["StellarRoles.EpicGames"],
+          "exclude": []
+        },
+        "dll": {
+          "patterns": ["StellarRoles.dll"],
+          "exclude": [],
+          "exactMatch": true
         }
       },
       "requiresDepot": true,
@@ -488,7 +498,7 @@
           "exclude": ["epic", "msstore", "microsoft", "Epic", "MS"]
         },
         "epic": {
-          "patterns": ["epic", "epic-msstore", "epicmsstore", "Epic", "MS"],
+          "patterns": ["epic", "epic-msstore", "epicmsstore", "Epic", "MS", "Epic+MicrosoftStore"],
           "exclude": []
         }
       },
@@ -617,11 +627,11 @@
       "category": "Host Mod",
       "assetFilters": {
         "steam": {
-          "patterns": ["_Steam"],
+          "patterns": ["_Steam", "EHR.v"],
           "exclude": ["Epic", "Microsoft", "Epic-Games"]
         },
         "epic": {
-          "patterns": ["Epic-Games_Microsoft-Store", "epic", "epic-msstore"],
+          "patterns": ["Epic-Games_Microsoft-Store", "EHR.v"],
           "exclude": []
         },
         "dll": {
@@ -768,7 +778,7 @@
       "category": "Utility",
       "assetFilters": {
         "default": {
-          "patterns": ["win-x64.zip"],
+          "patterns": ["Impostor-Server_", "win-x64"],
           "exclude": ["linux", "osx", "arm", "arm64", "nupkg", "snupkg", "source", "Source"]
         }
       },
@@ -779,7 +789,7 @@
       "id": "VanillaEnhancements",
       "name": "Vanilla Enhancements",
       "author": "xChipseq",
-      "description": "An among us mod adding lots of quality-of-life features to the game.",
+      "description": "An among us mod adding lots of quality-of-life features to the game. Requires BepInEx and Reactor (installed automatically as a dependency).",
       "githubOwner": "xChipseq",
       "githubRepo": "VanillaEnhancements",
       "category": "Mod",
@@ -798,7 +808,7 @@
           "fileName": "Reactor.dll",
           "githubOwner": "NuclearPowered",
           "githubRepo": "Reactor",
-          "requiredVersion": null,
+          "requiredVersion": ">=2.5.0",
           "optional": false
         }
       ],
@@ -901,8 +911,16 @@
       "githubRepo": "Town-Of-Us",
       "category": "Mod",
       "assetFilters": {
+        "steam": {
+          "patterns": ["x32"],
+          "exclude": ["Desktop", "x64"]
+        },
+        "epic": {
+          "patterns": ["x64"],
+          "exclude": ["Desktop", "x32"]
+        },
         "dll": {
-          "patterns": [".dll"],
+          "patterns": ["Desktop.dll"],
           "exclude": []
         }
       },
@@ -919,8 +937,9 @@
       "category": "Fun",
       "assetFilters": {
         "dll": {
-          "patterns": [".dll"],
-          "exclude": []
+          "patterns": ["PokeLobby.dll"],
+          "exclude": [],
+          "exactMatch": true
         }
       },
       "requiresDepot": false,
@@ -998,8 +1017,9 @@
       "category": "Fun",
       "assetFilters": {
         "dll": {
-          "patterns": [".dll"],
-          "exclude": []
+          "patterns": ["Emojis.dll"],
+          "exclude": [],
+          "exactMatch": true
         }
       },
       "requiresDepot": false,
@@ -1206,44 +1226,6 @@
       "assetFilters": {
         "dll": {
           "patterns": ["NotePadMod.dll"],
-          "exclude": [],
-          "exactMatch": true
-        }
-      },
-      "requiresDepot": false,
-      "dependencies": [
-        {
-          "modId": "TownOfUs",
-          "name": "Town of Us Mira",
-          "fileName": "TownOfUsMira.dll",
-          "githubOwner": "AU-Avengers",
-          "githubRepo": "TOU-Mira",
-          "requiredVersion": null,
-          "optional": false
-        },
-        {
-          "modId": "MiraAPI",
-          "name": "MiraAPI",
-          "fileName": "MiraAPI.dll",
-          "githubOwner": "All-Of-Us-Mods",
-          "githubRepo": "MiraAPI",
-          "requiredVersion": null,
-          "optional": false
-        }
-      ],
-      "incompatibilities": []
-    },
-    {
-      "id": "LocalizeUs",
-      "name": "Localize Us!",
-      "author": "AU-Avengers",
-      "description": "Adds extra languages to Among Us and Town of Us Mira, such as Polish, Swedish, and Turkish.",
-      "githubOwner": "AU-Avengers",
-      "githubRepo": "LocalizeUs",
-      "category": "Mod",
-      "assetFilters": {
-        "dll": {
-          "patterns": ["LocalizeUs.dll"],
           "exclude": [],
           "exactMatch": true
         }

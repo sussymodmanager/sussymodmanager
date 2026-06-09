@@ -57,7 +57,8 @@ namespace SussyModManager.ViewModels
 
         public void RefreshInstallCount()
         {
-            var ids = Preset.ModIds ?? new List<string>();
+            var fresh = _env.Presets.ResolveFreshPreset(Preset, _env.Config) ?? Preset;
+            var ids = fresh.ModIds ?? new List<string>();
             var total = ids.Count;
             var ready = ids.Count(_env.Manager.IsModReady);
             InstallCountLabel = $"{ready}/{total} installed";
