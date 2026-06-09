@@ -20,15 +20,34 @@ public class AmongUsProcessGuardTests
     [Fact]
     public void PathUnderAmongUsInstall_MatchesExeAndNestedPaths()
     {
-        var game = @"C:\Games\Among Us";
-        Assert.True(AmongUsProcessGuard.PathUnderAmongUsInstall(
-            @"C:\Games\Among Us\Among Us.exe", game));
-        Assert.True(AmongUsProcessGuard.PathUnderAmongUsInstall(
-            @"C:\Games\Among Us\BepInEx\plugins\Reactor.dll", game));
-        Assert.False(AmongUsProcessGuard.PathUnderAmongUsInstall(
-            @"C:\Games\Among Us 2\Among Us.exe", game));
-        Assert.False(AmongUsProcessGuard.PathUnderAmongUsInstall(
-            @"C:\Other\Among Us.exe", game));
+        var root = Path.Combine(Path.GetTempPath(), "smm_guard_paths_" + Guid.NewGuid().ToString("N"));
+        var game = Path.Combine(root, "Among Us");
+        var sibling = Path.Combine(root, "Among Us 2");
+        var other = Path.Combine(root, "Other");
+        Directory.CreateDirectory(Path.Combine(game, "BepInEx", "plugins"));
+        Directory.CreateDirectory(sibling);
+        Directory.CreateDirectory(other);
+
+        var exe = Path.Combine(game, "Among Us.exe");
+        var plugin = Path.Combine(game, "BepInEx", "plugins", "Reactor.dll");
+        var siblingExe = Path.Combine(sibling, "Among Us.exe");
+        var otherExe = Path.Combine(other, "Among Us.exe");
+        File.WriteAllText(exe, "");
+        File.WriteAllText(plugin, "");
+        File.WriteAllText(siblingExe, "");
+        File.WriteAllText(otherExe, "");
+
+        try
+        {
+            Assert.True(AmongUsProcessGuard.PathUnderAmongUsInstall(exe, game));
+            Assert.True(AmongUsProcessGuard.PathUnderAmongUsInstall(plugin, game));
+            Assert.False(AmongUsProcessGuard.PathUnderAmongUsInstall(siblingExe, game));
+            Assert.False(AmongUsProcessGuard.PathUnderAmongUsInstall(otherExe, game));
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { }
+        }
     }
 
     [Fact]
