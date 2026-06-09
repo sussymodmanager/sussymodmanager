@@ -7,6 +7,8 @@ Select the mods you want to use, or pick a preset, and hit play. It's just that 
 BepInEx, Dependencies (Reactor, MiraAPI, etc) are handled for you. Steam, Epic, Xbox/MS Store install paths are automatically detected.
 Designed to make Among Us Modding as accessible as possible.
 
+![MODSTORE](https://github.com/sussymodmanager/sussymodmanager/blob/main/assets/modstore.png)
+
 ## Download
 
 Grab the latest build from [releases](https://github.com/sussymodmanager/sussymodmanager/releases/latest).
@@ -26,6 +28,8 @@ Grab the latest build from [releases](https://github.com/sussymodmanager/sussymo
 
 ## Mod store
 
+![MODSTORE](https://github.com/sussymodmanager/sussymodmanager/blob/main/assets/modstore.png)
+
 **Fast Installs:** Mods come from directly from the source and are ready to update whenever new versions are released.
 
 **Store filters:** narrow the grid to mods that are not installed, already installed, or have an update available.
@@ -35,6 +39,8 @@ Grab the latest build from [releases](https://github.com/sussymodmanager/sussymo
 You can also drop in your own plugin DLLs from **Installed → Add custom .dll**.
 
 ## Presets
+
+![PRESETS](https://github.com/sussymodmanager/sussymodmanager/blob/main/assets/presets.png)
 
 Three built-in packs ship with the app:
 
@@ -56,6 +62,8 @@ When Better CrewLink is in the active selection, it starts automatically alongsi
 
 ## Installed mods
 
+![INSTALLED](https://github.com/sussymodmanager/sussymodmanager/blob/main/assets/installed.png)
+
 This is where you control what actually loads into the game.
 
 - **Launch** checkbox per mod — only checked mods (plus their dependencies) get copied into `BepInEx/plugins` when you play.
@@ -66,6 +74,8 @@ This is where you control what actually loads into the game.
 BepInEx is **be.752**, the same build bundled with Town of Us Mira — not a random bleeding-edge beta. Install or repair it from **Settings** if something's off.
 
 ## Themes
+
+![THEMES](https://github.com/sussymodmanager/sussymodmanager/blob/main/assets/themes.png)
 
 Eight built-in profiles (Sus Default, Impostor Red, Crew Blue, Skeld Teal, Bubblegum Pink, Toxic Green, AMOLED Black, Light Mint) plus custom themes.
 
