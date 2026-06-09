@@ -1,8 +1,11 @@
+
 # SUSSYMODMANAGER
 
-Desktop mod manager for Among Us. Windows, macOS, and Linux.
+Feature rich desktop mod manager for Among Us on Windows, macOS, and Linux.
 
-You point it at your game folder, install mods from the store, tick what you want for launch, and hit play. BepInEx and dependencies (Reactor, MiraAPI, etc.) are handled for you. Fork of [BeanModManager](https://github.com/rewalo/BeanModManager) — GPLv3, see [LICENSE](LICENSE).
+Select the mods you want to use, or pick a preset, and hit play. It's just that simple.
+BepInEx, Dependencies (Reactor, MiraAPI, etc) are handled for you. Steam, Epic, Xbox/MS Store install paths are automatically detected.
+Designed to make Among Us Modding as accessible as possible.
 
 ## Download
 
@@ -10,27 +13,24 @@ Grab the latest build from [releases](https://github.com/sussymodmanager/sussymo
 
 | Platform | What to grab |
 |----------|----------------|
-| Windows | `SussyModManager-Setup-x64.exe` (installer) or `SussyModManager-win-x64.zip` (portable folder) |
+| Windows x64 | `SussyModManager-Setup-x64.exe` (installer) or `SussyModManager-win-x64.zip` (portable folder) |
+| Windows ARM| `SussyModManager-win-arm64.zip` (portable folder) |
 | macOS | `SussyModManager-osx-arm64.zip` (Apple Silicon) or `osx-x64` (Intel) |
 | Linux | `SussyModManager-linux-x64.zip` — unzip, then `./run.sh` |
 
-Nothing is code-signed yet. Windows SmartScreen / Defender and macOS Gatekeeper may block the first run. If that happens: unblock the zip in Properties, or right-click the app → Open. Defender sometimes quarantines new exes — check Protection history and allow it if you're sure you downloaded from here.
-
 ## Quick start
 
-1. Run the app. The setup wizard asks for your Among Us folder (auto-detect works for Steam, Epic, and Xbox/MS Store on Windows).
+1. Run the app, the Setup Wizard guides you through getting the app running.
 2. Go to **Presets** and install **SUS AF**, **TOHE**, or **Vanilla+**, or browse **Mod Store** and install what you want.
 3. On **Installed**, check **Launch** next to the mods you want active, then hit **PLAY**.
 
-If you already used BeanModManager on Windows, your game path and downloaded mods import on first launch.
-
 ## Mod store
 
-Mods come from GitHub releases and Thunderstore. The catalog and built-in presets live in [`data/`](data/) in this repo and are pulled live on startup (and via **Settings → Refresh store from GitHub**), so store and preset fixes can ship without waiting for a new app build — the UI reloads automatically when an update is found.
+**Fast Installs:** Mods come from directly from the source and are ready to update whenever new versions are released.
 
-**Store filters:** narrow the grid to mods that are not installed, already installed, or have an update available (after a check).
+**Store filters:** narrow the grid to mods that are not installed, already installed, or have an update available.
 
-Dependencies install in the right order. If GitHub rate-limits the API, the manager falls back to direct release URLs and bundled cache data.
+**Just Works:** Dependencies install in the right order every time so you never need to worry about any issues. 
 
 You can also drop in your own plugin DLLs from **Installed → Add custom .dll**.
 
@@ -46,7 +46,7 @@ Three built-in packs ship with the app (SUS AF is pinned at the top with a **FEA
 
 Each preset card shows **X/Y installed** (files actually on disk, not just config entries).
 
-For your own setups: save the current selection as a preset, rename or delete it later, **Load selection** without reinstalling. Custom presets can be exported to `.json` and shared; import someone else's file from the Presets page. Built-in packs don't have an export button — they're already in the repo.
+For your own setups: save the current selection as a preset, rename or delete it later, **Load selection** without reinstalling. Custom presets can be exported to `.json` and shared; import someone else's file from the Presets page. 
 
 **Install Pack** refreshes the live preset from GitHub, then downloads any missing mods (no forced updates on already-installed ones). Does not select the pack.
 
@@ -133,6 +133,6 @@ dotnet publish src/SussyModManager/SussyModManager.csproj -c Release -r win-x64 
 
 Official release zips are plain self-contained folders (not single-file) to avoid Defender false positives.
 
-## Changelog
+## License
 
-See [CHANGELOG.md](CHANGELOG.md). Current release: **1.0.9** (skip 1.0.5 and 1.0.8 — bad version stamps).
+Fork of [BeanModManager](https://github.com/rewalo/BeanModManager) — GPLv3, see [LICENSE](LICENSE).
