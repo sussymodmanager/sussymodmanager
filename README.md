@@ -16,7 +16,7 @@ Grab the latest build from [releases](https://github.com/sussymodmanager/sussymo
 | Windows x64 | `SussyModManager-Setup-x64.exe` (installer) or `SussyModManager-win-x64.zip` (portable folder) |
 | Windows ARM| `SussyModManager-win-arm64.zip` (portable folder) |
 | macOS | `SussyModManager-osx-arm64.zip` (Apple Silicon) or `osx-x64` (Intel) |
-| Linux | `SussyModManager-linux-x64.zip` — unzip, then `./run.sh` |
+| Linux | `SussyModManager-linux-x64.zip` unzip, then `./run.sh` |
 
 ## Quick start
 
@@ -36,15 +36,13 @@ You can also drop in your own plugin DLLs from **Installed → Add custom .dll**
 
 ## Presets
 
-Three built-in packs ship with the app (SUS AF is pinned at the top with a **FEATURED** badge):
+Three built-in packs ship with the app:
 
-**SUS AF** — Town of Us Mira, Roles Extension, Draft Mode, AleLuduMod, ChaosTokens, Divani Mods, Game Tweaks, AUnlocker, Vanilla Enhancements, Better CrewLink. Installs in dependency order; one button.
+**SUS AF:** Town of Us Mira, Roles Extension, Draft Mode, AleLuduMod, ChaosTokens, Divani Mods, Game Tweaks, AUnlocker, Vanilla Enhancements, Better CrewLink.
 
-**TOHE** — Town of Host Enhanced, AUnlocker, Vanilla Enhancements, Better CrewLink.
+**TOHE:** Town of Host Enhanced, AUnlocker, Vanilla Enhancements, Better CrewLink.
 
-**Vanilla+** — AUnlocker and Vanilla Enhancements only. Light tweaks, no role mods.
-
-Each preset card shows **X/Y installed** (files actually on disk, not just config entries).
+**Vanilla+:** AUnlocker and Vanilla Enhancements only.
 
 For your own setups: save the current selection as a preset, rename or delete it later, **Load selection** without reinstalling. Custom presets can be exported to `.json` and shared; import someone else's file from the Presets page. 
 
