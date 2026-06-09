@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.9 — 2026-06-09
+
+**Use this release instead of 1.0.8.** The 1.0.8 build was stamped as v1.0.7 in the client, which caused auto-update to re-download forever.
+
+### App updates
+- Version attributes (`InformationalVersion`, `FileVersion`, `AssemblyVersion`) are stamped explicitly on every build.
+- Startup normalizes stale update staging when the running build is already current.
+- Auto-download skips when `LatestVersion` is not newer than the running build.
+- Pending update markers are cleared by the apply script after a successful copy (not before), with an `applying` lock to avoid restart loops.
+
+### Mods
+- **Vanilla Enhancements:** install-time DLL patch fixes the GitHub rate-limit crash; launch is no longer blocked.
+
 ## 1.0.8 — 2026-06-08
 
 ### Mod versions & store

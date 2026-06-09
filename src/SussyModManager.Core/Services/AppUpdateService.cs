@@ -64,6 +64,8 @@ namespace SussyModManager.Core.Services
             info.LatestVersion = release.version;
             info.DownloadUrl = release.downloadUrl ?? AppInfo.ReleasesUrl;
             info.UpdateAvailable = IsNewer(info.LatestVersion, AppInfo.Version);
+            if (!info.UpdateAvailable)
+                ClearStagedUpdate();
             info.CheckSucceeded = true;
             return true;
         }
@@ -149,6 +151,7 @@ namespace SussyModManager.Core.Services
 
         private static string StagedDir => Path.Combine(UpdatesRoot, "staged");
         private static string PendingMarker => Path.Combine(UpdatesRoot, "pending.txt");
+        private static string ApplyingMarker => Path.Combine(UpdatesRoot, "applying.txt");
 
         public static bool HasPendingUpdate =>
             File.Exists(PendingMarker) && Directory.Exists(StagedDir);
@@ -186,7 +189,51 @@ namespace SussyModManager.Core.Services
             }
 
             try { File.Delete(PendingMarker); } catch { }
+            try { File.Delete(ApplyingMarker); } catch { }
             try { File.Delete(Path.Combine(UpdatesRoot, "download.zip")); } catch { }
+        }
+
+        /// <summary>
+        /// Drops stale staging when the running build is already current, and repairs interrupted applies.
+        /// Call before <see cref="TryApplyPendingUpdate"/>.
+        /// </summary>
+        public static void NormalizeUpdateState()
+        {
+            try
+            {
+                if (File.Exists(ApplyingMarker))
+                {
+                    var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(ApplyingMarker);
+                    if (age <= TimeSpan.FromMinutes(10))
+                        return;
+                    try { File.Delete(ApplyingMarker); } catch { }
+                }
+
+                var pending = GetPendingUpdateVersion();
+                if (!string.IsNullOrWhiteSpace(pending) && !IsNewer(pending, AppInfo.Version))
+                    ClearStagedUpdate();
+
+                if (File.Exists(PendingMarker) && !Directory.Exists(StagedDir))
+                    try { File.Delete(PendingMarker); } catch { }
+
+                if (!File.Exists(PendingMarker) && Directory.Exists(StagedDir))
+                    try { Directory.Delete(StagedDir, true); } catch { }
+            }
+            catch
+            {
+            }
+        }
+
+        public static void ClearApplyingMarkerIfPresent()
+        {
+            try
+            {
+                if (File.Exists(ApplyingMarker))
+                    File.Delete(ApplyingMarker);
+            }
+            catch
+            {
+            }
         }
 
         /// <summary>
@@ -198,6 +245,12 @@ namespace SussyModManager.Core.Services
         {
             if (info == null || !info.CanAutoApply)
                 return false;
+
+            if (!IsNewer(info.LatestVersion, AppInfo.Version))
+            {
+                ClearStagedUpdate();
+                return false;
+            }
 
             if (IsUpdateAlreadyStaged(info.LatestVersion))
                 return true;
@@ -245,8 +298,18 @@ namespace SussyModManager.Core.Services
             if (!HasPendingUpdate)
                 return false;
 
+            if (File.Exists(ApplyingMarker))
+                return false;
+
             try
             {
+                var pending = GetPendingUpdateVersion();
+                if (!string.IsNullOrWhiteSpace(pending) && !IsNewer(pending, AppInfo.Version))
+                {
+                    ClearStagedUpdate();
+                    return false;
+                }
+
                 var exePath = Environment.ProcessPath;
                 if (string.IsNullOrEmpty(exePath))
                     return false;
@@ -255,25 +318,25 @@ namespace SussyModManager.Core.Services
                     return false;
 
                 var pid = Environment.ProcessId;
-
-                // Clear the marker now so a failed apply can't loop forever.
-                try { File.Delete(PendingMarker); } catch { }
+                try { File.WriteAllText(ApplyingMarker, DateTime.UtcNow.ToString("O")); } catch { }
 
                 if (PlatformInfo.IsWindows)
-                    SpawnWindowsUpdater(pid, StagedDir, installDir, exePath);
+                    SpawnWindowsUpdater(pid, StagedDir, installDir, exePath, PendingMarker, ApplyingMarker);
                 else
-                    SpawnUnixUpdater(pid, StagedDir, installDir, exePath);
+                    SpawnUnixUpdater(pid, StagedDir, installDir, exePath, PendingMarker, ApplyingMarker);
 
                 return true;
             }
             catch (Exception ex)
             {
                 Log.Error("Failed to apply pending update.", ex);
+                ClearApplyingMarkerIfPresent();
                 return false;
             }
         }
 
-        private static void SpawnWindowsUpdater(int pid, string staged, string installDir, string exePath)
+        private static void SpawnWindowsUpdater(int pid, string staged, string installDir, string exePath,
+            string pendingMarker, string applyingMarker)
         {
             var bat = Path.Combine(UpdatesRoot, "apply-update.bat");
             var script =
@@ -284,6 +347,8 @@ namespace SussyModManager.Core.Services
                 "if not errorlevel 1 ( ping -n 2 127.0.0.1 >nul & goto wait )\r\n" +
                 $"xcopy /e /i /y \"{staged}\\*\" \"{installDir}\\\" >nul\r\n" +
                 $"rmdir /s /q \"{staged}\" >nul 2>&1\r\n" +
+                $"del /f /q \"{pendingMarker}\" >nul 2>&1\r\n" +
+                $"del /f /q \"{applyingMarker}\" >nul 2>&1\r\n" +
                 $"start \"\" \"{exePath}\"\r\n" +
                 "del \"%~f0\"\r\n";
             File.WriteAllText(bat, script);
@@ -298,7 +363,8 @@ namespace SussyModManager.Core.Services
             });
         }
 
-        private static void SpawnUnixUpdater(int pid, string staged, string installDir, string exePath)
+        private static void SpawnUnixUpdater(int pid, string staged, string installDir, string exePath,
+            string pendingMarker, string applyingMarker)
         {
             var sh = Path.Combine(UpdatesRoot, "apply-update.sh");
             var script =
@@ -306,6 +372,7 @@ namespace SussyModManager.Core.Services
                 $"while kill -0 {pid} 2>/dev/null; do sleep 0.5; done\n" +
                 $"cp -Rf \"{staged}/.\" \"{installDir}/\"\n" +
                 $"rm -rf \"{staged}\"\n" +
+                $"rm -f \"{pendingMarker}\" \"{applyingMarker}\"\n" +
                 $"chmod +x \"{exePath}\" 2>/dev/null\n" +
                 $"nohup \"{exePath}\" >/dev/null 2>&1 &\n" +
                 "rm -- \"$0\"\n";

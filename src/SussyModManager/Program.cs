@@ -13,10 +13,14 @@ namespace SussyModManager
         {
             InstallGlobalExceptionHandlers();
 
+            AppUpdateService.NormalizeUpdateState();
+
             // If an update was downloaded last session, hand off to the updater and exit so it can
             // replace our files and relaunch us. This makes updates apply seamlessly on launch.
             if (AppUpdateService.TryApplyPendingUpdate())
                 return;
+
+            AppUpdateService.ClearApplyingMarkerIfPresent();
 
             try
             {

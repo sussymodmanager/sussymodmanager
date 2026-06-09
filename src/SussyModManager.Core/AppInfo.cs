@@ -21,7 +21,7 @@ namespace SussyModManager.Core
         public const string GitHubBranch = "main";
 
         /// <summary>
-        /// Resolved at runtime from the assembly's informational version (set via the build).
+        /// Resolved at runtime from the entry assembly version attributes (set via the build).
         /// Falls back to "1.0.0" for local debug builds with no version stamped.
         /// </summary>
         public static string Version { get; } = ResolveVersion();
@@ -31,26 +31,52 @@ namespace SussyModManager.Core
             try
             {
                 var asm = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
+
                 var informational = asm
                     .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-                if (!string.IsNullOrWhiteSpace(informational))
-                {
-                    // Strip any build metadata suffix like "1.2.3+abc123".
-                    var plus = informational.IndexOf('+');
-                    if (plus > 0)
-                        informational = informational.Substring(0, plus);
-                    if (!string.Equals(informational, "1.0.0.0", StringComparison.Ordinal))
-                        return informational;
-                }
+                if (TryNormalizeVersion(informational, out var fromInformational))
+                    return fromInformational;
+
+                var fileVersion = asm.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
+                if (TryNormalizeVersion(fileVersion, out var fromFile))
+                    return fromFile;
 
                 var asmVersion = asm.GetName().Version;
-                if (asmVersion != null)
-                    return $"{asmVersion.Major}.{asmVersion.Minor}.{asmVersion.Build}";
+                if (asmVersion != null && TryNormalizeVersion(asmVersion.ToString(), out var fromAssembly))
+                    return fromAssembly;
             }
             catch
             {
             }
+
             return "1.0.0";
+        }
+
+        internal static bool TryNormalizeVersion(string raw, out string normalized)
+        {
+            normalized = null;
+            if (string.IsNullOrWhiteSpace(raw))
+                return false;
+
+            var s = raw.Trim();
+            var plus = s.IndexOf('+');
+            if (plus > 0)
+                s = s.Substring(0, plus);
+
+            if (s.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+                s = s.Substring(1);
+
+            var cut = s.IndexOfAny(new[] { '-', ' ' });
+            if (cut > 0)
+                s = s.Substring(0, cut);
+
+            if (System.Version.TryParse(s, out var parsed))
+            {
+                normalized = $"{parsed.Major}.{parsed.Minor}.{parsed.Build}";
+                return true;
+            }
+
+            return false;
         }
 
         public static bool RepoConfigured =>

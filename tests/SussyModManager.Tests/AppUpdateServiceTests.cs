@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SussyModManager.Core;
 using SussyModManager.Core.Models;
 using SussyModManager.Core.Platform;
 using SussyModManager.Core.Services;
@@ -93,6 +94,24 @@ public class AppUpdateServiceTests
     public void IsUpdateAlreadyStaged_IsFalseWithoutPendingFiles()
     {
         Assert.False(AppUpdateService.IsUpdateAlreadyStaged("1.0.6"));
+    }
+
+    [Theory]
+    [InlineData("1.0.9", "1.0.9.0", "1.0.9")]
+    [InlineData("v1.0.8", "1.0.8.0", "1.0.8")]
+    [InlineData("1.0.7+abc123", "1.0.7.0", "1.0.7")]
+    public void TryNormalizeVersion_ParsesBuildMetadata(string raw, string fileVersion, string expected)
+    {
+        Assert.True(AppInfo.TryNormalizeVersion(raw, out var fromInformational));
+        Assert.Equal(expected, fromInformational);
+        Assert.True(AppInfo.TryNormalizeVersion(fileVersion, out var fromFile));
+        Assert.Equal(expected, fromFile);
+    }
+
+    [Fact]
+    public void NormalizeUpdateState_DoesNotThrowWhenUpdatesFolderMissing()
+    {
+        AppUpdateService.NormalizeUpdateState();
     }
 
     private static string WrongArchTokenFor(string rid)
