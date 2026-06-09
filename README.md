@@ -20,9 +20,9 @@
 
 # Introduction
 
-<a href="https://github.com/sussymodmanager/sussymodmanager/blob/main/assets/sus-logo-square.jpg">
+<a href="https://github.com/sussymodmanager/sussymodmanager/blob/main/assets/sus-logo-square.png">
   <img
-    src="https://raw.githubusercontent.com/sussymodmanager/sussymodmanager/blob/main/assets/sus-logo-square.jpg"
+    src="https://github.com/sussymodmanager/sussymodmanager/blob/main/assets/sus-logo-square.png"
     align="right"
     width="128"
   />
